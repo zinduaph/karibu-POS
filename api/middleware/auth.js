@@ -1,34 +1,31 @@
 import jwt from 'jsonwebtoken';
-import RefreshToken from '../models/refreshToken.js';
-import { sha256 } from '../utils/token.js';
-import User from '../models/user.js';
+import User from '../models/User.js';
 
-const JWT_SECRET = process.env.ACCESS_SECRET;
-
-export const authenticate = async (req, res, next) => {
+export async function authenticate(req, res, next) {
   try {
-    const raw = req.cookies?.['rt'];
-    if (!raw) return res.status(401).json({ message: 'No refresh token' });
+    const header = req.headers.authorization || '';
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
-    const doc = await RefreshToken.findOne({ tokenHash: sha256(raw) });
-    if (!doc || doc.revokedAt) return res.status(401).json({ message: 'Invalid refresh token' });
-    if (doc.expiresAt < new Date()) return res.status(401).json({ message: 'Refresh token expired' });
+    const p = jwt.verify(token, process.env.ACCESS_SECRET, { algorithms: ['HS256'] });
 
-    const user = await User.findById(doc.userId);
-    if (!user || !user.isActive) return res.status(401).json({ message: 'User not found or inactive' });
+    // DB check on every request, so deactivating or force-logging-out a user works instantly
+    const user = await User.findOne({ _id: p.sub, isActive: true })
+      .select('role restaurantId tokenVersion name mustChangePin');
+    if (!user || user.tokenVersion !== p.tv) return res.status(401).json({ message: 'Unauthorized' });
 
-    req.user = { id: user._id, role: user.role, restaurantId: user.restaurantId };
-    next();
-  } catch (e) {
-    res.status(401).json({ message: 'Authentication error' });
-  }
-};
-
-export const requireRole = (allowedRole) => {
-  return (req, res, next) => {
-    if (req.user.role !== allowedRole) {
-      return res.status(403).json({ message: 'Forbidden: Insufficient role' });
+    // A cashier still on the PIN the admin chose can only use /api/auth/* (to change it)
+    if (user.mustChangePin && !req.originalUrl.startsWith('/api/auth/')) {
+      return res.status(403).json({ message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' });
     }
+
+    // restaurantId comes from the DB record, NEVER from the request body or query
+    req.user = { id: String(user._id), role: user.role, restaurantId: user.restaurantId, name: user.name };
     next();
-  };
-};
+  } catch {
+    res.status(401).json({ message: 'Unauthorized' });
+  }
+}
+
+export const requireRole = (...roles) => (req, res, next) =>
+  roles.includes(req.user.role) ? next() : res.status(403).json({ message: 'Forbidden' });
