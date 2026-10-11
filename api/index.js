@@ -1,5 +1,5 @@
 import express from "express";
-import { connectedDB } from "./db/db.js";
+import { connectedDB } from "./config/db.js";
 import cookieParser from "cookie-parser";
  import dotenv from "dotenv";
  dotenv.config();
