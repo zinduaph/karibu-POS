@@ -1,16 +1,15 @@
-# React + Vite
+# Karibu POS client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Start the backend from `root/backend` with `npm run dev`, then start this
+client from `root/client` with `npm run dev`. The client sends API requests
+directly to `VITE_BACKEND_URL` (default: `http://localhost:8000`) and appends
+`/api`.
 
-Currently, two official plugins are available:
+Sales and order management use the backend API. Set `VITE_BACKEND_URL` when
+the backend is hosted at a different URL (for example,
+`https://example.com`). The client sends a bearer token from local storage
+using the key `token`; set `VITE_AUTH_TOKEN_KEY` if the authentication
+implementation uses a different key.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+The Sale screen currently uses sample menu data. Product management is not
+connected to the product API yet.
