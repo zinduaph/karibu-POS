@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import RefreshToken from '../models/RefreshToken.js';
+import RefreshToken from '../models/refreshToken.js';
 
 const REFRESH_TTL_MS = { admin: 7 * 24 * 3600e3, cashier: 12 * 3600e3 }; // cashier = about one shift
 const COOKIE = 'rt';

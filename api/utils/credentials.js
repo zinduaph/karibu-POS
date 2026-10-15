@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
 // 6-digit PINs are easy to crack offline if only the DB leaks.

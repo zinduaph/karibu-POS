@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
 
     username: { type: String, lowercase: true, trim: true },    // cashier
     pinHash: { type: String, select: false },
+    mustChangePin: { type: Boolean, default: false },
 
     isActive: { type: Boolean, default: true },
     failedAttempts: { type: Number, default: 0 },

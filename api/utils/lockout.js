@@ -1,4 +1,4 @@
-import User from '../models/User.js';
+import User from '../models/user.js';
 
 const MAX_ATTEMPTS = 5;
 const LOCK_MS = 15 * 60e3;
