@@ -18,7 +18,7 @@ export const clearRefreshCookie = (res) => res.clearCookie(COOKIE, cookieBase())
 export const signAccess = (user) =>
   jwt.sign(
     { sub: String(user._id), role: user.role, restaurantId: String(user.restaurantId), tv: user.tokenVersion },
-    process.env.ACCESS_SECRET,
+    process.env.ACCESS_TOKEN,
     { expiresIn: '15m', algorithm: 'HS256' }
   );
 

@@ -7,7 +7,7 @@ export async function authenticate(req, res, next) {
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
-    const p = jwt.verify(token, process.env.ACCESS_SECRET, { algorithms: ['HS256'] });
+    const p = jwt.verify(token, process.env.ACCESS_TOKEN, { algorithms: ['HS256'] });
 
     // DB check on every request, so deactivating or force-logging-out a user works instantly
     const user = await User.findOne({ _id: p.sub, isActive: true })

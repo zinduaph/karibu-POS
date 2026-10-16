@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { getStoredRestaurant } from '../services/authApi'
 
 const summaryCards = [
   { label: 'Sales today', value: '—', note: 'Sales data will appear here' },
@@ -7,6 +8,8 @@ const summaryCards = [
 ]
 
 function DashboardHome() {
+  const restaurant = getStoredRestaurant()
+
   return (
     <div className="space-y-8">
       <header>
@@ -18,6 +21,22 @@ function DashboardHome() {
           A quick view of your restaurant operations.
         </p>
       </header>
+
+      {restaurant && (
+        <section className="rounded-2xl border border-[#547A95]/15 bg-white p-5 shadow-sm sm:p-6">
+          <p className="text-sm font-semibold text-[#547A95]">Restaurant setup</p>
+          <h2 className="mt-2 text-xl font-bold text-[#2C3947]">{restaurant.name}</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Restaurant code for cashier sign-in
+          </p>
+          <p className="mt-1 inline-flex rounded-lg bg-[#547A95]/5 px-3 py-2 font-mono text-sm font-bold tracking-wide text-[#2C3947]">
+            {restaurant.code}
+          </p>
+          <p className="mt-2 text-xs text-slate-400">
+            Keep this code available for your cashiers.
+          </p>
+        </section>
+      )}
 
       <section aria-label="Business summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {summaryCards.map((card) => (

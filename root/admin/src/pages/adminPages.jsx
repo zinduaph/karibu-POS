@@ -1,12 +1,17 @@
-function SectionPage({ title, description, emptyMessage, columns }) {
+import { Link } from 'react-router-dom'
+
+function SectionPage({ title, description, emptyMessage, columns, action }) {
   return (
     <div className="space-y-6">
-      <header>
-        <p className="text-sm font-semibold text-[#547A95]">ADMIN WORKSPACE</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#2C3947]">
-          {title}
-        </h1>
-        <p className="mt-2 text-sm text-slate-500">{description}</p>
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-semibold text-[#547A95]">ADMIN WORKSPACE</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#2C3947]">
+            {title}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">{description}</p>
+        </div>
+        {action}
       </header>
 
       <section className="overflow-hidden rounded-2xl border border-[#547A95]/15 bg-white shadow-sm">
@@ -86,8 +91,18 @@ export function OrdersPage() {
 }
 
 export function StaffPage() {
+  const action = (
+    <Link
+      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#547A95] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#42677e]"
+      to="/dashboard/staff/new"
+    >
+      Register cashier
+    </Link>
+  )
+
   return (
     <SectionPage
+      action={action}
       description="Manage team members and their access to the POS."
       emptyMessage="Staff management is not connected yet."
       title="Staff"

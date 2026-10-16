@@ -1,14 +1,29 @@
 import express from "express";
 import { connectedDB } from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
+import cors from "./middleware/cors.js";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+const requiredEnvironment = ['MONGO_URI', 'ACCESS_TOKEN', 'PIN_PEPPER'];
+const missingEnvironment = requiredEnvironment.filter(
+  (name) => !process.env[name]?.trim(),
+);
+
+if (missingEnvironment.length > 0) {
+  console.error(
+    `API configuration error: missing required environment variable(s): ${missingEnvironment.join(', ')}. ` +
+      'Set them in the repository-root .env file, then restart the API.',
+  );
+  process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(cors);
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);

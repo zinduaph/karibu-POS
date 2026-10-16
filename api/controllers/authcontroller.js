@@ -32,9 +32,9 @@ const invalid = (res) => res.status(401).json({ message: 'Invalid credentials' }
 const unauthorized = (res) => res.status(401).json({ message: 'Unauthorized' });
 const restaurantIsActive = (id) => Restaurant.exists({ _id: id, isActive: true });
 
-async function startSession(user, res) {
+async function startSession(user, res, additionalData = {}) {
   await issueRefresh(user, res);
-  res.json({ accessToken: signAccess(user), user: publicUser(user) });
+  res.json({ accessToken: signAccess(user), user: publicUser(user), ...additionalData });
 }
 
 export const adminRegister = asyncHandler(async (req, res) => {
@@ -82,14 +82,53 @@ export const adminRegister = asyncHandler(async (req, res) => {
   });
 });
 
+export const cashierRegister = asyncHandler(async (req, res) => {
+  const { name, username, pin } = req.body;
+  const adminRestaurantId = req.user.restaurantId;
+
+  const existing = await User.findOne({
+    restaurantId: adminRestaurantId,
+    username,
+    role: 'cashier',
+  });
+
+  if (existing) {
+    return res.status(409).json({ message: 'A cashier with that username already exists for this restaurant' });
+  }
+
+  const user = await User.create({
+    restaurantId: adminRestaurantId,
+    name,
+    username,
+    role: 'cashier',
+    pinHash: await hashPin(pin),
+    mustChangePin: true,
+    isActive: true,
+  });
+
+  res.status(201).json({
+    user: publicUser(user),
+    restaurantId: user.restaurantId,
+    username: user.username,
+    message: 'Cashier account created successfully. Ask the cashier to change the PIN on first login.',
+  });
+});
+
 export const adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email, role: 'admin', isActive: true }).select('+passwordHash');
 
   if (!(await verifyWithLockout(user, checkPassword, password))) return invalid(res);
-  if (!(await restaurantIsActive(user.restaurantId))) return unauthorized(res);
+  const restaurant = await Restaurant.findOne({ _id: user.restaurantId, isActive: true });
+  if (!restaurant) return unauthorized(res);
 
-  await startSession(user, res);
+  await startSession(user, res, {
+    restaurant: {
+      id: restaurant._id,
+      name: restaurant.name,
+      code: restaurant.code,
+    },
+  });
 });
 
 export const cashierLogin = asyncHandler(async (req, res) => {
