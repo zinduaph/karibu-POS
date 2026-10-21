@@ -1,51 +1,30 @@
-
 import { Navigate, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import DashboardHome from './pages/dashboardHome'
 import Dashboard from './pages/dashboard'
 import Sale from './pages/sale'
 import Orders from './pages/orders'
+import AdminDashboard from './pages/adminDashboard'
+import AdminLoginPage from './pages/adminLogin'
 import AdminRegistrationPage from './pages/adminreg'
 import CashierRegistrationPage from './pages/cashierreg'
 import CashierLoginPage from './pages/login'
 import CashierPinChangePage from './pages/changePin'
-import { getStoredToken } from './services/authApi'
+import ChangePasswordPage from './pages/changePassword'
+import OnboardingPage from './pages/onboarding'
 import { Toaster } from 'react-hot-toast'
 
-function RequireCashier({ children }) {
-  const token = getStoredToken()
+// Role protection is now handled by the backend (auth middleware).
+// These helper functions check localStorage for UX guidance only.
+
+function checkRole(role) {
   let user = null
   try {
     user = JSON.parse(window.localStorage.getItem('user') || 'null')
   } catch {
     window.localStorage.removeItem('user')
   }
-
-  if (!token || user?.role !== 'cashier') {
-    return <Navigate replace to="/login" />
-  }
-  if (user.mustChangePin) {
-    return <Navigate replace to="/change-pin" />
-  }
-  return children
-}
-
-function RequirePinChange({ children }) {
-  const token = getStoredToken()
-  let user = null
-  try {
-    user = JSON.parse(window.localStorage.getItem('user') || 'null')
-  } catch {
-    window.localStorage.removeItem('user')
-  }
-
-  if (!token || user?.role !== 'cashier') {
-    return <Navigate replace to="/login" />
-  }
-  if (!user.mustChangePin) {
-    return <Navigate replace to="/dashboard/home" />
-  }
-  return children
+  return user && user.role === role
 }
 
 function App() {
@@ -55,23 +34,23 @@ function App() {
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/login' element={<CashierLoginPage />} />
+        <Route path='/admin/login' element={<AdminLoginPage />} />
         <Route path='/admin/register' element={<AdminRegistrationPage />} />
         <Route path='/cashier/register' element={<CashierRegistrationPage />} />
+        <Route path='/change-pin' element={checkRole('cashier') ? <CashierPinChangePage /> : <Navigate to="/login" replace />} />
+        <Route path='/change-password' element={checkRole('admin') ? <ChangePasswordPage /> : <Navigate to="/admin/login" replace />} />
+        <Route path='/onboarding' element={<OnboardingPage />} />
         <Route
-          path='/change-pin'
-          element={
-            <RequirePinChange>
-              <CashierPinChangePage />
-            </RequirePinChange>
-          }
+          path='/admin'
+          element={checkRole('admin') ? <AdminDashboard /> : <Navigate to="/admin/login" replace />}
+        />
+        <Route
+          path='/admin/dashboard'
+          element={checkRole('admin') ? <AdminDashboard /> : <Navigate to="/admin/login" replace />}
         />
         <Route
           path='/dashboard'
-          element={
-            <RequireCashier>
-              <Dashboard />
-            </RequireCashier>
-          }
+          element={checkRole('cashier') ? <Dashboard /> : <Navigate to="/login" replace />}
         >
           <Route index element={<DashboardHome />} />
           <Route path='home' element={<DashboardHome />} />

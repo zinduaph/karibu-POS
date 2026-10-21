@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { clientAppUrl } from '../config'
 import { adminRegister } from '../services/authApi'
 
 const initialForm = {
@@ -10,7 +11,6 @@ const initialForm = {
 }
 
 const AdminRegistrationPage = () => {
-  const navigate = useNavigate()
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -26,7 +26,7 @@ const AdminRegistrationPage = () => {
     setIsSubmitting(true)
     try {
       await adminRegister(form)
-      navigate('/dashboard/home', { replace: true })
+      window.location.replace(`${clientAppUrl}/onboarding`)
     } catch (submitError) {
       setError(submitError.message || 'Unable to create admin account.')
     } finally {

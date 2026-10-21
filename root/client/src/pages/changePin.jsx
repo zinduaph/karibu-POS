@@ -31,7 +31,7 @@ const CashierPinChangePage = () => {
         currentPin: form.currentPin,
         newPin: form.newPin,
       })
-      navigate('/dashboard/home', { replace: true })
+      navigate('/onboarding', { replace: true })
     } catch (changeError) {
       setError(changeError.message || 'Unable to change your PIN. Try again.')
     } finally {

@@ -33,9 +33,8 @@ const CashierRegistrationPage = () => {
     setIsSubmitting(true)
 
     try {
-      const response = await cashierRegister(form)
-      setSuccessMessage(response.message || 'Cashier account created successfully.')
-      setForm(initialForm)
+      await cashierRegister(form)
+      navigate('/onboarding', { replace: true })
     } catch (submitError) {
       setError(submitError.message || 'Unable to create cashier account.')
     } finally {

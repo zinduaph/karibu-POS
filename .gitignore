@@ -1,3 +1,4 @@
 .env
 node_modules/
 .kilo/plans/onboarding-plan.md
+.kilo/plans/auth-fix-plan.md

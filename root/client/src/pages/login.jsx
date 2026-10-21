@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { cashierLogin } from '../services/authApi'
+import { cashierLogin, adminLogin } from '../services/authApi'
 
-const CashierLoginPage = () => {
+const LoginPage = () => {
   const navigate = useNavigate()
   const [form, setForm] = useState({
+    role: 'cashier', // or 'admin'
     restaurantCode: '',
     username: '',
     pin: '',
+    email: '',
+    password: '',
   })
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -23,10 +26,27 @@ const CashierLoginPage = () => {
     setIsSubmitting(true)
 
     try {
-      const response = await cashierLogin(form)
-      navigate(response.user?.mustChangePin ? '/change-pin' : '/dashboard/home', {
-        replace: true,
-      })
+      let response
+      if (form.role === 'admin') {
+        response = await adminLogin({ email: form.email, password: form.password })
+      } else {
+        response = await cashierLogin({
+          restaurantCode: form.restaurantCode,
+          username: form.username,
+          pin: form.pin,
+        })
+      }
+      
+      // Redirect based on role and mustChangePin/mustChangePassword
+      if (response.user?.mustChangePin) {
+        navigate('/change-pin', { replace: true })
+      } else if (response.user?.mustChangePassword) {
+        navigate('/change-password', { replace: true })
+      } else if (form.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate('/dashboard/home', { replace: true })
+      }
     } catch (loginError) {
       setError(loginError.message || 'Unable to sign in. Check your details and try again.')
     } finally {
@@ -40,9 +60,34 @@ const CashierLoginPage = () => {
         <Link to="/" className="text-sm font-semibold text-[#22396F] hover:underline">
           Karibu POS
         </Link>
-        <h1 className="mt-5 text-3xl font-bold tracking-tight">Cashier sign in</h1>
+        
+        {/* Role Toggle */}
+        <div className="mb-4 role-toggle">
+          <button
+            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
+              form.role === 'cashier' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
+            }`}
+            onClick={() => setForm((f) => ({ ...f, role: 'cashier' }))}
+          >
+            Cashier
+          </button>
+          <button
+            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
+              form.role === 'admin' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
+            }`}
+            onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
+          >
+            Admin
+          </button>
+        </div>
+
+        <h1 className="mt-5 text-3xl font-bold tracking-tight">
+          {form.role === 'cashier' ? 'Cashier sign in' : 'Admin sign in'}
+        </h1>
         <p className="mt-2 text-sm leading-6 text-black/60">
-          Enter your restaurant code, username, and PIN to open the POS.
+          {form.role === 'cashier'
+            ? 'Enter your restaurant code, username, and PIN to open the POS.'
+            : 'Enter your email and password to access the administration panel.'}
         </p>
 
         {error && (
@@ -52,69 +97,118 @@ const CashierLoginPage = () => {
         )}
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <label className="block text-sm font-semibold">
-            Restaurant code
-            <input
-              autoComplete="organization"
-              className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
-              maxLength={20}
-              name="restaurantCode"
-              onChange={handleChange}
-              placeholder="KRB-XXXXXXXX"
-              required
-              value={form.restaurantCode}
-            />
-          </label>
+          {form.role === 'cashier' && (
+            <>
+              <label className="block text-sm font-semibold">
+                Restaurant code
+                <input
+                  autoComplete="organization"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={20}
+                  name="restaurantCode"
+                  onChange={handleChange}
+                  placeholder="KRB-XXXXXXXX"
+                  required
+                  value={form.restaurantCode}
+                />
+              </label>
 
-          <label className="block text-sm font-semibold">
-            Username
-            <input
-              autoComplete="username"
-              className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
-              maxLength={40}
-              name="username"
-              onChange={handleChange}
-              required
-              value={form.username}
-            />
-          </label>
+              <label className="block text-sm font-semibold">
+                Username
+                <input
+                  autoComplete="username"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={40}
+                  name="username"
+                  onChange={handleChange}
+                  required
+                  value={form.username}
+                />
+              </label>
 
-          <label className="block text-sm font-semibold">
-            PIN
-            <input
-              autoComplete="current-password"
-              className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
-              inputMode="numeric"
-              maxLength={20}
-              name="pin"
-              onChange={handleChange}
-              required
-              type="password"
-              value={form.pin}
-            />
-          </label>
+              <label className="block text-sm font-semibold">
+                PIN
+                <input
+                  autoComplete="current-password"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  inputMode="numeric"
+                  maxLength={20}
+                  name="pin"
+                  onChange={handleChange}
+                  required
+                  type="password"
+                  value={form.pin}
+                />
+              </label>
+            </>
+          )}
+
+          {form.role === 'admin' && (
+            <>
+              <label className="block text-sm font-semibold">
+                Email
+                <input
+                  autoComplete="email"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={254}
+                  name="email"
+                  onChange={handleChange}
+                  required
+                  value={form.email}
+                />
+              </label>
+
+              <label className="block text-sm font-semibold">
+                Password
+                <input
+                  autoComplete="current-password"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={200}
+                  name="password"
+                  onChange={handleChange}
+                  required
+                  value={form.password}
+                  type="password"
+                />
+              </label>
+            </>
+          )}
 
           <button
             className="min-h-12 w-full rounded-xl bg-[#22396F] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#192b55] disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isSubmitting}
             type="submit"
           >
-            {isSubmitting ? 'Signing in…' : 'Sign in to POS'}
+            {isSubmitting ? 'Signing in…' : `${form.role === 'cashier' ? 'Sign in to POS' : 'Sign in to Administration'}`}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-black/60">
-          Admin?{' '}
-          <a
-            className="font-semibold text-[#22396F] hover:underline"
-            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/login`}
-          >
-            Sign in to administration
-          </a>
+          {form.role === 'cashier' ? (
+            <span>
+              Admin?{' '}
+              <a
+                className="font-semibold text-[#22396F] hover:underline"
+                href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
+              >
+                Sign in to administration
+              </a>
+            </span>
+          ) : (
+            <span>
+              Cashier?{' '}
+              <a
+                className="font-semibold text-[#22396F] hover:underline"
+                onClick={() => setForm((f) => ({ ...f, role: 'cashier' }))}
+              >
+                Sign in to POS
+              </a>
+            </span>
+          )}
         </p>
       </section>
     </main>
   )
 }
 
-export default CashierLoginPage
+export default LoginPage

@@ -1,20 +1,19 @@
 import { backendUrl } from '../config'
 
 const API_BASE_URL = `${backendUrl}/api`
-const AUTH_TOKEN_KEY = import.meta.env.VITE_AUTH_TOKEN_KEY || 'token'
 
-export const getStoredToken = () => window.localStorage.getItem(AUTH_TOKEN_KEY)
+export const getStoredToken = () => null // No longer stored in localStorage - use httpOnly cookie instead
 
 export const clearSession = () => {
-  window.localStorage.removeItem(AUTH_TOKEN_KEY)
+  // No localStorage to clear - browser handles httpOnly cookie destruction via logout endpoint
   window.localStorage.removeItem('user')
   window.localStorage.removeItem('restaurant')
 }
 
 export const persistSession = (payload) => {
-  if (payload?.accessToken) {
-    window.localStorage.setItem(AUTH_TOKEN_KEY, payload.accessToken)
-  }
+  // No longer persists to localStorage - auth state managed by httpOnly cookies
+  // Browser automatically sends rt cookie with every same-origin request
+  // Optionally store minimal user info in localStorage if needed for non-auth UI
   if (payload?.user) {
     window.localStorage.setItem('user', JSON.stringify(payload.user))
   }
@@ -24,22 +23,19 @@ export const persistSession = (payload) => {
 }
 
 const request = async (path, options = {}) => {
-  const token = getStoredToken()
+  // credentials: 'include' automatically sends httpOnly cookies (rt refresh token)
+  // No need to manually attach Bearer token - cookie handles auth
   const headers = new Headers(options.headers || {})
 
   if (!(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
-  }
-
   let response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...options,
-      credentials: 'include',
+      credentials: 'include', // <--- CRITICAL: sends httpOnly cookie automatically
       headers,
     })
   } catch (error) {
@@ -49,7 +45,7 @@ const request = async (path, options = {}) => {
   }
 
   const data = await response.json().catch(() => ({}))
-  if (!response.ok || data.success === false) {
+  if (!response.ok || data.message === 'Invalid credentials' || data.message === 'Unauthorized' || data.message === 'No refresh token cookie') {
     const error = new Error(data.message || `Request failed (${response.status})`)
     error.status = response.status
     error.data = data
@@ -71,6 +67,8 @@ export const adminLogin = async (payload) => {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  // persistSession no longer sets auth tokens - they're in httpOnly cookies
+  // We still store minimal user info for UI convenience
   persistSession(data)
   return data
 }
@@ -99,4 +97,57 @@ export const changeCashierPin = async ({ currentPin, newPin }) => {
   })
   persistSession(data)
   return data
+}
+
+export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
+  const data = await request('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+  persistSession(data)
+  return data
+}
+
+export const getOnboardingStatus = async () => {
+  return request('/auth/onboarding/status', { method: 'GET' })
+}
+
+export const adminChangePassword = async ({ currentPassword, newPassword }) => {
+  return request('/auth/onboarding/admin/password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}
+
+export const updateRestaurantDetails = async (payload) => {
+  return request('/auth/onboarding/restaurant/details', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export const markOnboardingComplete = async () => {
+  return request('/auth/onboarding/complete', { method: 'POST' })
+}
+
+export const addProduct = async (payload) => {
+  return request('/auth/onboarding/products', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export const listProducts = async () => {
+  return request('/auth/onboarding/products', { method: 'GET' })
+}
+
+export const updateProduct = async (id, payload) => {
+  return request(`/auth/onboarding/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+export const deleteProduct = async (id) => {
+  return request(`/auth/onboarding/products/${id}`, { method: 'DELETE' })
 }

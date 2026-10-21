@@ -1,6 +1,7 @@
 import express from "express";
 import { connectedDB } from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
+import onboardingRoutes from "./routes/onboarding.routes.js";
 import cors from "./middleware/cors.js";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
@@ -27,6 +28,7 @@ app.use(cors);
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/onboarding", onboardingRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");

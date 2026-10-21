@@ -58,6 +58,8 @@ export const adminRegister = asyncHandler(async (req, res) => {
         email,
         passwordHash,
         role: 'admin',
+        onboardingStep: 'restaurant',
+        onboarded: false,
       });
       await user.save({ session });
     });

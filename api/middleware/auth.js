@@ -1,29 +1,23 @@
-import jwt from 'jsonwebtoken';
+import RefreshToken from '../models/refreshToken.js';
 import User from '../models/user.js';
+import { sha256 } from '../utils/token.js';
 
 export async function authenticate(req, res, next) {
   try {
-    const header = req.headers.authorization || '';
-    const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    const raw = req.cookies?.['rt'];
+    if (!raw) return res.status(401).json({ message: 'No refresh token cookie' });
 
-    const p = jwt.verify(token, process.env.ACCESS_TOKEN, { algorithms: ['HS256'] });
+    const doc = await RefreshToken.findOne({ tokenHash: sha256(raw) });
+    if (!doc || doc.revokedAt) return res.status(401).json({ message: 'Invalid refresh token' });
+    if (doc.expiresAt < new Date()) return res.status(401).json({ message: 'Refresh token expired' });
 
-    // DB check on every request, so deactivating or force-logging-out a user works instantly
-    const user = await User.findOne({ _id: p.sub, isActive: true })
-      .select('role restaurantId tokenVersion name mustChangePin');
-    if (!user || user.tokenVersion !== p.tv) return res.status(401).json({ message: 'Unauthorized' });
+    const user = await User.findById(doc.userId);
+    if (!user || !user.isActive) return res.status(401).json({ message: 'User not found or inactive' });
 
-    // A cashier still on the PIN the admin chose can only use /api/auth/* (to change it)
-    if (user.mustChangePin && !req.originalUrl.startsWith('/api/auth/')) {
-      return res.status(403).json({ message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' });
-    }
-
-    // restaurantId comes from the DB record, NEVER from the request body or query
-    req.user = { id: String(user._id), role: user.role, restaurantId: user.restaurantId, name: user.name };
+    req.user = { id: user._id, role: user.role, restaurantId: user.restaurantId, name: user.name };
     next();
-  } catch {
-    res.status(401).json({ message: 'Unauthorized' });
+  } catch (e) {
+    res.status(401).json({ message: 'Authentication error' });
   }
 }
 

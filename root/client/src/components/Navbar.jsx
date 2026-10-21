@@ -53,7 +53,7 @@ const Navbar = () => {
             Cashier sign in
           </Link>
           <a
-            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/login`}
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
             className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
           >
             Admin sign in
@@ -108,7 +108,7 @@ const Navbar = () => {
             Cashier sign in
           </Link>
           <a
-            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/login`}
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
             className="rounded-lg px-4 py-3 font-semibold text-[#22396F] transition-colors hover:bg-[#22396F]/10 focus-visible:outline-2 focus-visible:outline-[#22396F]"
             onClick={() => setMenuOpen(false)}
           >
