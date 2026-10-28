@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collectCashPayment, getSales } from '../services/salesApi'
+import {
+  collectCashPayment,
+  getSales,
+  recordTillPayment,
+  sendMpesaPrompt,
+} from '../services/salesApi'
 
 const filters = [
   { label: 'All orders', value: 'all' },
@@ -51,6 +56,8 @@ const mapSaleToOrder = (sale) => ({
   paymentMethod: sale.paymentMethod,
   amountReceived: sale.amountReceived,
   change: sale.change,
+  mpesaReceiptLast4: sale.mpesaReceiptLast4,
+  mpesaReceiptNumber: sale.mpesaReceiptNumber,
 })
 
 const Icon = ({ name, className = 'size-5' }) => (
@@ -91,25 +98,37 @@ const Orders = () => {
   const [storageError, setStorageError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [paymentOrder, setPaymentOrder] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('cash')
   const [cashReceived, setCashReceived] = useState('')
+  const [receiptLast4, setReceiptLast4] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [isPaying, setIsPaying] = useState(false)
 
   useEffect(() => {
+    let active = true
+
     const loadOrders = async () => {
       try {
         const response = await getSales()
+        if (!active) return
         setOrders(response.sales.map(mapSaleToOrder))
         setStorageError('')
       } catch (error) {
         console.error('Unable to load sales from the backend:', error)
-        setStorageError(error.message || 'Orders could not be loaded from the backend.')
+        if (active) setStorageError(error.message || 'Orders could not be loaded from the backend.')
       } finally {
-        setIsLoading(false)
+        if (active) setIsLoading(false)
       }
     }
 
     loadOrders()
+    const refreshInterval = window.setInterval(loadOrders, 15000)
+
+    return () => {
+      active = false
+      window.clearInterval(refreshInterval)
+    }
   }, [])
 
   const visibleOrders = useMemo(() => {
@@ -124,36 +143,61 @@ const Orders = () => {
       : sortedOrders.filter((order) => order.paymentStatus === activeFilter)
   }, [activeFilter, orders])
 
-  const openCashPayment = (order) => {
+  const openPayment = (order, method) => {
     setPaymentOrder(order)
+    setPaymentMethod(method)
     setCashReceived('')
+    setReceiptLast4('')
+    setPhoneNumber('')
     setPaymentError('')
   }
 
-  const closeCashPayment = () => {
+  const closePayment = () => {
     setPaymentOrder(null)
     setCashReceived('')
+    setReceiptLast4('')
+    setPhoneNumber('')
     setPaymentError('')
   }
 
-  const confirmCashPayment = async (event) => {
+  const confirmPayment = async (event) => {
     event.preventDefault()
     if (!paymentOrder || isPaying) return
 
     const received = Number(cashReceived)
-    if (!Number.isFinite(received) || received < paymentOrder.total) {
-      setPaymentError(
-        `Enter an amount of at least ${formatPrice(paymentOrder.total)}.`,
-      )
+    if (paymentMethod === 'cash' && (!Number.isFinite(received) || received < paymentOrder.total)) {
+      setPaymentError(`Enter an amount of at least ${formatPrice(paymentOrder.total)}.`)
+      return
+    }
+    if (paymentMethod === 'mpesa_till' && !/^[A-Z0-9]{4}$/.test(receiptLast4)) {
+      setPaymentError('Enter the last four characters of the customer’s M-Pesa receipt number.')
+      return
+    }
+    if (paymentMethod === 'mpesa' && !phoneNumber.trim()) {
+      setPaymentError('Enter the customer’s phone number for the M-Pesa prompt.')
       return
     }
 
     setIsPaying(true)
     try {
-      const response = await collectCashPayment({
-        orderId: paymentOrder.orderId,
-        amountReceived: received,
-      })
+      let response
+      if (paymentMethod === 'cash') {
+        response = await collectCashPayment({
+          orderId: paymentOrder.orderId,
+          amountReceived: received,
+        })
+      } else if (paymentMethod === 'mpesa_till') {
+        response = await recordTillPayment({
+          orderId: paymentOrder.orderId,
+          receiptLast4,
+        })
+      } else {
+        response = await sendMpesaPrompt({
+          orderId: paymentOrder.orderId,
+          phoneNumber,
+        })
+      }
+
       const updatedOrder = mapSaleToOrder(response.sale)
       setOrders((currentOrders) =>
         currentOrders.map((order) =>
@@ -163,9 +207,9 @@ const Orders = () => {
         ),
       )
       setStorageError('')
-      closeCashPayment()
+      closePayment()
     } catch (error) {
-      console.error('Unable to record cash payment:', error)
+      console.error('Unable to process order payment:', error)
       setPaymentError(error.message || 'Payment could not be recorded. Please try again.')
     } finally {
       setIsPaying(false)
@@ -210,8 +254,7 @@ const Orders = () => {
         role="note"
         className="rounded-xl border border-[#22396F]/15 bg-[#FCF1D0] px-4 py-3 text-sm leading-5 text-black/75"
       >
-        Orders and payment status are loaded from the backend. M-Pesa sales
-        update after the payment callback is received.
+        Orders are created as pending. Choose a payment method for an order when the customer is ready; M-Pesa prompts update after the payment callback.
       </div>
 
       {storageError && (
@@ -349,24 +392,45 @@ const Orders = () => {
                   )}
                 </div>
 
-                {!isPaid &&
-                  order.paymentStatus !== 'failed' &&
-                  (order.paymentMethod === 'cash' ? (
-                    <div className="border-t border-black/10 bg-[#E8EDF2]/35 p-4">
-                      <button
-                        type="button"
-                        onClick={() => openCashPayment(order)}
-                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-                      >
-                        <Icon name="cash" className="size-4" />
-                        Record cash payment
-                      </button>
-                    </div>
-                  ) : (
-                    <p className="border-t border-black/10 bg-[#E8EDF2]/35 px-4 py-3 text-center text-sm text-black/60">
-                      M-Pesa prompt sent; awaiting payment confirmation.
-                    </p>
-                  ))}
+                {isPaid && order.paymentMethod === 'mpesa_till' && (
+                  <p className="border-t border-black/10 bg-emerald-50 px-5 py-3 text-right text-xs text-emerald-900">
+                    M-Pesa Till receipt ending {order.mpesaReceiptLast4}
+                  </p>
+                )}
+
+                {!isPaid && (
+                  <div className="grid gap-2 border-t border-black/10 bg-[#E8EDF2]/35 p-4 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={() => openPayment(order, 'cash')}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-black px-3 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                    >
+                      <Icon name="cash" className="size-4" />
+                      Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPayment(order, 'mpesa_till')}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm font-bold transition-colors hover:border-black/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                    >
+                      <Icon name="check" className="size-4" />
+                      M-Pesa Till
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openPayment(order, 'mpesa')}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/15 bg-white px-3 py-2.5 text-sm font-bold transition-colors hover:border-black/35 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                    >
+                      <Icon name="phone" className="size-4" />
+                      Send prompt
+                    </button>
+                    {order.paymentMethod === 'mpesa' && order.paymentStatus === 'pending' && (
+                      <p className="text-center text-xs text-black/60 sm:col-span-3">
+                        M-Pesa prompt sent; awaiting customer confirmation.
+                      </p>
+                    )}
+                  </div>
+                )}
               </article>
             )
           })}
@@ -395,22 +459,26 @@ const Orders = () => {
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) closeCashPayment()
+            if (event.target === event.currentTarget) closePayment()
           }}
         >
           <section
             role="dialog"
             aria-modal="true"
-            aria-labelledby="cash-dialog-heading"
+            aria-labelledby="payment-dialog-heading"
             className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-2xl sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#22396F]">
-                  Cash payment
+                  {paymentMethod === 'cash'
+                    ? 'Cash payment'
+                    : paymentMethod === 'mpesa_till'
+                      ? 'M-Pesa Till payment'
+                      : 'M-Pesa prompt'}
                 </p>
                 <h2
-                  id="cash-dialog-heading"
+                  id="payment-dialog-heading"
                   className="mt-1 text-xl font-bold"
                 >
                   Confirm payment
@@ -421,15 +489,15 @@ const Orders = () => {
               </div>
               <button
                 type="button"
-                onClick={closeCashPayment}
-                aria-label="Close cash payment dialog"
+                onClick={closePayment}
+                aria-label="Close payment dialog"
                 className="grid size-10 shrink-0 place-items-center rounded-xl text-black/55 transition-colors hover:bg-black/5 hover:text-black focus-visible:outline-2 focus-visible:outline-black"
               >
                 <Icon name="close" />
               </button>
             </div>
 
-            <form onSubmit={confirmCashPayment} className="mt-6">
+            <form onSubmit={confirmPayment} className="mt-6">
               <div className="flex items-center justify-between rounded-xl bg-[#E8EDF2]/60 px-4 py-3">
                 <span className="text-sm font-medium text-black/65">
                   Amount due
@@ -439,49 +507,97 @@ const Orders = () => {
                 </span>
               </div>
 
-              <label
-                htmlFor="cash-received"
-                className="mt-5 block text-sm font-semibold"
-              >
-                Cash received
-              </label>
-              <div className="mt-2 flex min-h-12 items-center rounded-xl border border-black/20 px-3 focus-within:border-[#22396F] focus-within:ring-2 focus-within:ring-[#22396F]/15">
-                <span className="mr-2 text-sm font-semibold text-black/55">
-                  KES
-                </span>
-                <input
-                  id="cash-received"
-                  type="number"
-                  min={paymentOrder.total}
-                  step="1"
-                  inputMode="numeric"
-                  required
-                  autoFocus
-                  value={cashReceived}
-                  onChange={(event) => {
-                    setCashReceived(event.target.value)
-                    setPaymentError('')
-                  }}
-                  placeholder={String(paymentOrder.total)}
-                  className="min-w-0 flex-1 bg-transparent py-2 text-base text-black outline-none placeholder:text-black/35"
-                />
-              </div>
-              <p className="mt-2 text-xs text-black/55">
-                The amount must be at least the order total.
-              </p>
-
-              {cashReceived !== '' &&
-                Number.isFinite(Number(cashReceived)) &&
-                Number(cashReceived) >= paymentOrder.total && (
-                  <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-700/15 bg-emerald-50 px-4 py-3">
-                    <span className="text-sm font-medium text-emerald-900">
-                      Change due
-                    </span>
-                    <span className="font-bold text-emerald-900">
-                      {formatPrice(Number(cashReceived) - paymentOrder.total)}
-                    </span>
+              {paymentMethod === 'cash' && (
+                <>
+                  <label htmlFor="cash-received" className="mt-5 block text-sm font-semibold">
+                    Cash received
+                  </label>
+                  <div className="mt-2 flex min-h-12 items-center rounded-xl border border-black/20 px-3 focus-within:border-[#22396F] focus-within:ring-2 focus-within:ring-[#22396F]/15">
+                    <span className="mr-2 text-sm font-semibold text-black/55">KES</span>
+                    <input
+                      id="cash-received"
+                      type="number"
+                      min={paymentOrder.total}
+                      step="1"
+                      inputMode="text"
+                      required
+                      autoFocus
+                      value={cashReceived}
+                      onChange={(event) => {
+                        setCashReceived(event.target.value)
+                        setPaymentError('')
+                      }}
+                      placeholder={String(paymentOrder.total)}
+                      className="min-w-0 flex-1 bg-transparent py-2 text-base text-black outline-none placeholder:text-black/35"
+                    />
                   </div>
-                )}
+                  <p className="mt-2 text-xs text-black/55">
+                    The amount must be at least the order total.
+                  </p>
+                  {cashReceived !== '' &&
+                    Number.isFinite(Number(cashReceived)) &&
+                    Number(cashReceived) >= paymentOrder.total && (
+                      <div className="mt-4 flex items-center justify-between rounded-xl border border-emerald-700/15 bg-emerald-50 px-4 py-3">
+                        <span className="text-sm font-medium text-emerald-900">Change due</span>
+                        <span className="font-bold text-emerald-900">
+                          {formatPrice(Number(cashReceived) - paymentOrder.total)}
+                        </span>
+                      </div>
+                    )}
+                </>
+              )}
+              {paymentMethod === 'mpesa_till' && (
+                <>
+                  <label htmlFor="receipt-last-four" className="mt-5 block text-sm font-semibold">
+                    Last four characters of M-Pesa receipt
+                  </label>
+                  <input
+                    id="receipt-last-four"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={4}
+                    pattern="[A-Za-z0-9]{4}"
+                    required
+                    autoFocus
+                    value={receiptLast4}
+                    onChange={(event) => {
+                      setReceiptLast4(event.target.value.replace(/[^a-z0-9]/gi, '').slice(0, 4).toUpperCase())
+                      setPaymentError('')
+                    }}
+                    placeholder="e.g. RXVB"
+                    className="mt-2 min-h-12 w-full rounded-xl border border-black/20 px-3 text-base text-black outline-none focus:border-[#22396F] focus:ring-2 focus:ring-[#22396F]/15"
+                  />
+                  <p className="mt-2 text-xs text-black/55">
+                    Verify the transaction on the customer’s M-Pesa message first. The receipt suffix is recorded but is not independently verified.
+                  </p>
+                </>
+              )}
+              {paymentMethod === 'mpesa' && (
+                <>
+                  <label htmlFor="mpesa-phone" className="mt-5 block text-sm font-semibold">
+                    Customer phone number
+                  </label>
+                  <input
+                    id="mpesa-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    required
+                    autoFocus
+                    value={phoneNumber}
+                    onChange={(event) => {
+                      setPhoneNumber(event.target.value)
+                      setPaymentError('')
+                    }}
+                    placeholder="0712345678"
+                    className="mt-2 min-h-12 w-full rounded-xl border border-black/20 px-3 text-base text-black outline-none focus:border-[#22396F] focus:ring-2 focus:ring-[#22396F]/15"
+                  />
+                  <p className="mt-2 text-xs text-black/55">
+                    The order will stay pending until M-Pesa confirms the payment.
+                  </p>
+                </>
+              )}
 
               {paymentError && (
                 <p role="alert" className="mt-3 text-sm font-medium text-red-700">
@@ -492,7 +608,7 @@ const Orders = () => {
               <div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={closeCashPayment}
+                  onClick={closePayment}
                   className="min-h-11 rounded-xl border border-black/15 px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
                 >
                   Cancel
@@ -503,7 +619,13 @@ const Orders = () => {
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-black px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
                 >
                   <Icon name="check" className="size-4" />
-                  {isPaying ? 'Recording payment…' : 'Confirm paid'}
+                  {isPaying
+                    ? paymentMethod === 'mpesa'
+                      ? 'Sending prompt…'
+                      : 'Recording payment…'
+                    : paymentMethod === 'mpesa'
+                      ? 'Send M-Pesa prompt'
+                      : 'Confirm paid'}
                 </button>
               </div>
             </form>

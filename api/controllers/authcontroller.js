@@ -133,6 +133,8 @@ export const adminLogin = asyncHandler(async (req, res) => {
   });
 });
 
+
+
 export const cashierLogin = asyncHandler(async (req, res) => {
   const { restaurantCode, username, pin } = req.body;
   const restaurant = await Restaurant.findOne({ code: restaurantCode, isActive: true });

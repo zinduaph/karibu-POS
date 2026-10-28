@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { createSale } from '../services/salesApi'
-import toast from 'react-hot-toast'
 
 const menuItems = [
   {
@@ -149,8 +148,6 @@ const Sale = () => {
   const [cart, setCart] = useState([])
   const [latestOrder, setLatestOrder] = useState(null)
   const [orderError, setOrderError] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('cash')
-  const [phoneNumber, setPhoneNumber] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const filteredItems = useMemo(() => {
@@ -208,10 +205,6 @@ const Sale = () => {
 
   const createOrder = async () => {
     if (cart.length === 0 || isSubmitting) return
-    if (paymentMethod === 'mpesa' && !phoneNumber.trim()) {
-      toast.error('Enter the phone number for the M-Pesa prompt.')
-      return
-    }
     setIsSubmitting(true)
     
     try {
@@ -225,18 +218,14 @@ const Sale = () => {
           price,
           quantity,
         })),
-        paymentMethod,
-        ...(paymentMethod === 'mpesa' ? { phoneNumber } : {}),
       })
       const sale = response.sale
       setLatestOrder({
         id: sale.orderId || sale._id,
         total: sale.totalAmount,
         createdAt: sale.createdAt,
-        paymentMethod: sale.paymentMethod,
       })
       setCart([])
-      setPhoneNumber('')
     } catch (error) {
       console.error('Unable to create sale:', error)
       if (error.data?.sale) {
@@ -245,11 +234,9 @@ const Sale = () => {
           id: sale.orderId || sale._id,
           total: sale.totalAmount,
           createdAt: sale.createdAt,
-          paymentMethod: sale.paymentMethod,
           paymentIssue: true,
         })
         setCart([])
-        setPhoneNumber('')
       }
       setOrderError(error.message || 'The sale could not be created. Try again.')
     } finally {
@@ -310,9 +297,7 @@ const Sale = () => {
                 }).format(new Date(latestOrder.createdAt))}
               </p>
               <p className="mt-1 text-sm text-black/65">
-                {latestOrder.paymentMethod === 'mpesa'
-                  ? 'Approve the M-Pesa prompt. The order will update after payment confirmation.'
-                  : 'Sale saved. Collect cash from the Orders page to complete payment.'}
+                Order saved as pending. Choose cash, M-Pesa Till, or an M-Pesa prompt from the Orders page when the customer is ready to pay.
               </p>
             </div>
           </div>
@@ -516,32 +501,6 @@ const Sale = () => {
               <span className="text-sm font-medium text-black/65">Total</span>
               <span className="text-xl font-bold">{formatPrice(orderTotal)}</span>
             </div>
-            <label className="mt-4 block text-sm font-semibold">
-              Payment method
-              <select
-                value={paymentMethod}
-                onChange={(event) => setPaymentMethod(event.target.value)}
-                className="mt-1.5 min-h-11 w-full rounded-xl border border-black/15 bg-white px-3 font-normal outline-none focus:border-[#22396F]"
-              >
-                <option value="cash">Cash (collect after creating)</option>
-                <option value="mpesa">M-Pesa (send prompt now)</option>
-              </select>
-            </label>
-            {paymentMethod === 'mpesa' && (
-              <label className="mt-3 block text-sm font-semibold">
-                M-Pesa phone number
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={phoneNumber}
-                  onChange={(event) => setPhoneNumber(event.target.value)}
-                  placeholder="07XXXXXXXX"
-                  required
-                  className="mt-1.5 min-h-11 w-full rounded-xl border border-black/15 bg-white px-3 font-normal outline-none focus:border-[#22396F]"
-                />
-              </label>
-            )}
             <button
               type="button"
               onClick={createOrder}
@@ -549,16 +508,10 @@ const Sale = () => {
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black disabled:cursor-not-allowed disabled:bg-black/20 disabled:text-black/45"
             >
               <Icon name="receipt" className="size-5" />
-              {isSubmitting
-                ? 'Creating sale…'
-                : paymentMethod === 'mpesa'
-                  ? 'Create sale & send M-Pesa prompt'
-                  : 'Create sale'}
+              {isSubmitting ? 'Creating order…' : 'Create order'}
             </button>
             <p className="mt-3 text-center text-xs leading-5 text-black/50">
-              {paymentMethod === 'mpesa'
-                ? 'Payment remains pending until the backend confirms it.'
-                : 'Cash payment can be recorded from the Orders page.'}
+              Payment can be selected and recorded from the Orders page when the customer is ready.
             </p>
           </div>
         </aside>

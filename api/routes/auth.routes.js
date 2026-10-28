@@ -15,6 +15,16 @@ router.post('/cashier/register', authenticate, requireRole('admin'), registratio
 router.post('/admin/login', loginLimiter, validate(schema.adminLogin), auth.adminLogin);
 router.post('/cashier/login', loginLimiter, validate(schema.cashierLogin), auth.cashierLogin);
 
+// Admin-managed cashier accounts
+router.post(
+  '/cashier/register',
+  authenticate,
+  requireRole('admin'),
+  registrationLimiter,
+  validate(schema.cashierRegister),
+  auth.cashierRegister
+);
+
 // Session
 router.post('/refresh', auth.refreshToken);
 router.post('/logout', auth.logout);

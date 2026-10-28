@@ -27,6 +27,16 @@ function checkRole(role) {
   return user && user.role === role
 }
 
+function isAuthenticated() {
+  let user = null
+  try {
+    user = JSON.parse(window.localStorage.getItem('user') || 'null')
+  } catch {
+    window.localStorage.removeItem('user')
+  }
+  return !!user
+}
+
 function App() {
   return (
     <>
@@ -39,7 +49,7 @@ function App() {
         <Route path='/cashier/register' element={<CashierRegistrationPage />} />
         <Route path='/change-pin' element={checkRole('cashier') ? <CashierPinChangePage /> : <Navigate to="/login" replace />} />
         <Route path='/change-password' element={checkRole('admin') ? <ChangePasswordPage /> : <Navigate to="/admin/login" replace />} />
-        <Route path='/onboarding' element={<OnboardingPage />} />
+        <Route path='/onboarding' element={isAuthenticated() ? <OnboardingPage /> : <Navigate to="/login" replace />} />
         <Route
           path='/admin'
           element={checkRole('admin') ? <AdminDashboard /> : <Navigate to="/admin/login" replace />}

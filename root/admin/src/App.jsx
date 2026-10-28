@@ -4,14 +4,17 @@ import AdminRegistrationPage from './pages/adminreg'
 import CashierRegistrationPage from './pages/cashierreg'
 import Dashboard from './pages/dashboard'
 import DashboardHome from './pages/dashboardHome'
-import {
-  OrdersPage,
-  ProductsPage,
-  ReportsPage,
-  SalesPage,
-  SettingsPage,
-  StaffPage,
-} from './pages/adminPages'
+import LoginPage from './pages/login'
+import SignUp from './components/signUp'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './context/useAuth'
+import Ingredients from './pages/ingredients'
+import MenuItems from './pages/menuitems'
+import Orders from './pages/orders'
+import Reports from './pages/reports'
+import Sales from './pages/sales'
+import Settings from './pages/settings'
+import Staff from './pages/staff'
 import './App.css'
 import { getStoredToken, getStoredUser } from './services/authApi'
 
@@ -23,33 +26,44 @@ function RequireAdmin({ children }) {
   return children
 }
 
+function RequireAuth({ children }) {
+  const { loading, user } = useAuth()
+
+  if (loading) {
+    return <div className="grid min-h-screen place-items-center text-sm text-slate-600">Checking your session…</div>
+  }
+  return user ? children : <Navigate replace to="/login" />
+}
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AdminRegistrationPage />} path="/register" />
-        <Route element={<AdminLoginPage />} path="/loginAdmin" />
-        <Route
-          element={
-            <RequireAdmin>
-              <Dashboard />
-            </RequireAdmin>
-          }
-          path="/dashboard"
-        >
-          <Route element={<Navigate replace to="home" />} index />
-          <Route element={<DashboardHome />} path="home" />
-          <Route element={<ProductsPage />} path="products" />
-          <Route element={<SalesPage />} path="sales" />
-          <Route element={<OrdersPage />} path="orders" />
-          <Route element={<StaffPage />} path="staff" />
-          <Route element={<CashierRegistrationPage />} path="staff/new" />
-          <Route element={<ReportsPage />} path="reports" />
-          <Route element={<SettingsPage />} path="settings" />
-        </Route>
-        <Route element={<Navigate replace to="/dashboard/home" />} path="*" />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<LoginPage />} path="/login" />
+          <Route element={<SignUp />} path="/signup" />
+          <Route
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+            path="/dashboard"
+          >
+            <Route element={<Navigate replace to="home" />} index />
+            <Route element={<DashboardHome />} path="home" />
+            <Route element={<MenuItems />} path="menu-items" />
+            <Route element={<Sales />} path="sales" />
+            <Route element={<Orders />} path="orders" />
+            <Route element={<Ingredients />} path="ingredients" />
+            <Route element={<Staff />} path="staff" />
+            <Route element={<Reports />} path="reports" />
+            <Route element={<Settings />} path="settings" />
+          </Route>
+          <Route element={<Navigate replace to="/dashboard/home" />} path="*" />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 

@@ -33,7 +33,35 @@ The client uses `/api/sales` for checkout, order history, cash collection, and
 the dashboard summary. During development Vite proxies `/api` to the backend
 on port 8000.
 
-The sale controller expects authentication middleware to populate
-`req.userId.userId`, matching the existing controller convention. Protect
-authenticated sale endpoints with the team's authentication middleware; the
-M-Pesa callback endpoint must remain publicly reachable by Safaricom.
+`POST /api/menu-items` adds a menu item for the authenticated admin's
+restaurant. Authenticate with an access token in the Authorization header and
+send a JSON body with `name`, `category`, and numeric `price`. Optional fields
+are `recipe` (an array of
+`{ "ingredientId": "...", "quantity": 1 }`), `trackInventory`, and
+`isAvailable`. Recipe ingredients must be active and belong to the same
+restaurant; ownership is taken from the access token, not the request body.
+
+`GET /api/inventory` returns the authenticated user's inventory balances.
+Admins can set or initialize a balance with `PUT /api/inventory` and a JSON
+body containing `ingredientId`, `quantity`, and optional
+`averageCostPerBaseUnit`. This sets the absolute stock quantity; it does not
+add the submitted quantity to the existing balance.
+
+Admins can list ingredients with `GET /api/inventory/ingredients` and create
+one or more with `POST /api/inventory/add-ingredients`. Each ingredient needs
+`name` and a `baseUnit` of `g`, `ml`, or `piece`; `lowStockThreshold` is optional
+and defaults to zero. Restaurant ownership is taken from the access token.
+
+Admin and cashier authentication routes are available under `/api/auth`; the
+legacy `/api/user` prefix remains as an alias. Refresh tokens use an HTTP-only
+cookie, so the API allows credentialed requests from `CLIENT_ORIGIN` or the
+comma-separated `CLIENT_ORIGINS` list (default `http://localhost:5173`).
+Authenticated product and sales routes use the access token in the
+Authorization header; the M-Pesa callback remains public for Safaricom.
+
+Admins create cashier accounts with `POST /api/auth/cashier/register`, sending
+`name`, `username`, and a six-digit temporary `pin` with their access token in
+the Authorization header. The server assigns the cashier to the admin's
+restaurant, rejects weak or duplicate credentials, hashes the PIN, and returns
+the restaurant code for cashier sign-in. Cashiers must change their temporary
+PIN after their first login.

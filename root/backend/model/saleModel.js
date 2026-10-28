@@ -16,13 +16,14 @@ const saleSchema = new mongoose.Schema({
     }],
     totalAmount:{type:Number, required:true},
     paymentStatus: {type: String, enum: ['pending', 'completed', 'failed'], default: 'pending'},
-    paymentMethod: {type:String, enum:['cash','mpesa'], default:'cash'},
+    paymentMethod: {type:String, enum:['pending','cash','mpesa','mpesa_till'], default:'pending'},
     amountReceived:{type:Number},
     change:{type:Number},
     payerPhone: {type:String},
     merchantRequestId: {type:String},
     checkoutRequestId: {type:String, unique:true, sparse:true},
     mpesaReceiptNumber: {type:String},
+    mpesaReceiptLast4: {type:String, uppercase:true, match:/^[A-Z0-9]{4}$/},
     createdAt: {type:Date, default: Date.now}
 })
 

@@ -1,6 +1,60 @@
 import { backendUrl } from '../config'
+import { getAccessToken } from './authToken'
 
-const API_BASE_URL = `${backendUrl}/api`
+const AUTH_BASE_URL = `${backendUrl}/api/auth`
+
+export class AuthApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'AuthApiError'
+    this.status = status
+  }
+}
+
+export async function authRequest(path, options = {}) {
+  const { accessToken: includeAccessToken, ...requestOptions } = options
+  const headers = new Headers(requestOptions.headers || {})
+  if (requestOptions.body) headers.set('Content-Type', 'application/json')
+  if (includeAccessToken) {
+    const token = getAccessToken()
+    if (token) headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  let response
+  try {
+    response = await fetch(`${AUTH_BASE_URL}${path}`, {
+      ...requestOptions,
+      credentials: 'include',
+      headers,
+    })
+  } catch (error) {
+    throw new Error('Unable to reach the authentication server. Check your connection and API URL.', {
+      cause: error,
+    })
+  }
+
+  const body = await response.text()
+  let data
+  if (body) {
+    try {
+      data = JSON.parse(body)
+    } catch {
+      if (response.ok) throw new Error('The authentication server returned an invalid response.')
+    }
+  }
+
+  if (!response.ok) {
+    const validationErrors = Array.isArray(data?.errors)
+      ? data.errors.map(({ field, message }) => `${field}: ${message}`).join(' ')
+      : ''
+    throw new AuthApiError(
+      validationErrors || data?.message || body || 'Authentication request failed.',
+      response.status,
+    )
+  }
+
+  return data
+}
 
 export const getStoredToken = () => null // No longer stored in localStorage - use httpOnly cookie instead
 
@@ -22,59 +76,24 @@ export const persistSession = (payload) => {
   }
 }
 
-const request = async (path, options = {}) => {
-  // credentials: 'include' automatically sends httpOnly cookies (rt refresh token)
-  // No need to manually attach Bearer token - cookie handles auth
-  const headers = new Headers(options.headers || {})
-
-  if (!(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json')
-  }
-
-  let response
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      credentials: 'include', // <--- CRITICAL: sends httpOnly cookie automatically
-      headers,
-    })
-  } catch (error) {
-    throw new Error('Unable to reach the backend. Check that the API server is running.', {
-      cause: error,
-    })
-  }
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok || data.message === 'Invalid credentials' || data.message === 'Unauthorized' || data.message === 'No refresh token cookie') {
-    const error = new Error(data.message || `Request failed (${response.status})`)
-    error.status = response.status
-    error.data = data
-    throw error
-  }
-
-  return data
-}
-
 export const adminRegister = async (payload) => {
-  return request('/auth/admin/register', {
+  return authRequest('/admin/register', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export const adminLogin = async (payload) => {
-  const data = await request('/auth/admin/login', {
+  const data = await authRequest('/admin/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
-  // persistSession no longer sets auth tokens - they're in httpOnly cookies
-  // We still store minimal user info for UI convenience
   persistSession(data)
   return data
 }
 
 export const cashierLogin = async (payload) => {
-  const data = await request('/auth/cashier/login', {
+  const data = await authRequest('/cashier/login', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -83,7 +102,7 @@ export const cashierLogin = async (payload) => {
 }
 
 export const cashierRegister = async (payload) => {
-  const data = await request('/auth/cashier/register', {
+  const data = await authRequest('/cashier/register', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
@@ -91,7 +110,7 @@ export const cashierRegister = async (payload) => {
 }
 
 export const changeCashierPin = async ({ currentPin, newPin }) => {
-  const data = await request('/auth/change-pin', {
+  const data = await authRequest('/change-pin', {
     method: 'POST',
     body: JSON.stringify({ currentPin, newPin }),
   })
@@ -100,7 +119,7 @@ export const changeCashierPin = async ({ currentPin, newPin }) => {
 }
 
 export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
-  const data = await request('/auth/change-password', {
+  const data = await authRequest('/change-password', {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   })
@@ -109,45 +128,45 @@ export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
 }
 
 export const getOnboardingStatus = async () => {
-  return request('/auth/onboarding/status', { method: 'GET' })
+  return authRequest('/onboarding/status', { method: 'GET' })
 }
 
 export const adminChangePassword = async ({ currentPassword, newPassword }) => {
-  return request('/auth/onboarding/admin/password', {
+  return authRequest('/onboarding/admin/password', {
     method: 'POST',
     body: JSON.stringify({ currentPassword, newPassword }),
   })
 }
 
 export const updateRestaurantDetails = async (payload) => {
-  return request('/auth/onboarding/restaurant/details', {
+  return authRequest('/onboarding/restaurant/details', {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
 }
 
 export const markOnboardingComplete = async () => {
-  return request('/auth/onboarding/complete', { method: 'POST' })
+  return authRequest('/onboarding/complete', { method: 'POST' })
 }
 
 export const addProduct = async (payload) => {
-  return request('/auth/onboarding/products', {
+  return authRequest('/onboarding/products', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export const listProducts = async () => {
-  return request('/auth/onboarding/products', { method: 'GET' })
+  return authRequest('/onboarding/products', { method: 'GET' })
 }
 
 export const updateProduct = async (id, payload) => {
-  return request(`/auth/onboarding/products/${id}`, {
+  return authRequest(`/onboarding/products/${id}`, {
     method: 'PUT',
     body: JSON.stringify(payload),
   })
 }
 
 export const deleteProduct = async (id) => {
-  return request(`/auth/onboarding/products/${id}`, { method: 'DELETE' })
+  return authRequest(`/onboarding/products/${id}`, { method: 'DELETE' })
 }

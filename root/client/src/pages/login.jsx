@@ -167,8 +167,8 @@ const LoginPage = () => {
                   name="password"
                   onChange={handleChange}
                   required
-                  value={form.password}
                   type="password"
+                  value={form.password}
                 />
               </label>
             </>

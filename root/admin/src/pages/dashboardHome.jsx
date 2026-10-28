@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+<<<<<<< HEAD
 import { getStoredRestaurant } from '../services/authApi'
 
 const summaryCards = [
@@ -9,6 +11,61 @@ const summaryCards = [
 
 function DashboardHome() {
   const restaurant = getStoredRestaurant()
+=======
+import { useAuth } from '../context/useAuth'
+import { getAllSales } from '../services/salesApi'
+
+function DashboardHome() {
+  const { accessToken } = useAuth()
+  const [sales, setSales] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+
+    getAllSales(accessToken)
+      .then((result) => {
+        if (active) setSales(result)
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [accessToken])
+
+  const todaySales = useMemo(() => {
+    const now = new Date()
+    return sales.filter((sale) => {
+      const saleDate = new Date(sale.createdAt)
+      return (
+        saleDate.getFullYear() === now.getFullYear() &&
+        saleDate.getMonth() === now.getMonth() &&
+        saleDate.getDate() === now.getDate()
+      )
+    })
+  }, [sales])
+
+  const completedSales = todaySales.filter((sale) => sale.paymentStatus === 'completed')
+  const totalSales = completedSales.reduce((total, sale) => total + Number(sale.totalAmount || 0), 0)
+  const openOrders = todaySales.filter((sale) => sale.paymentStatus === 'pending').length
+  const formatCurrency = (amount) => new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: 'KES',
+    maximumFractionDigits: 0,
+  }).format(amount)
+  const summaryCards = [
+    { label: 'Sales today', value: formatCurrency(totalSales), note: 'Completed sales today' },
+    { label: 'Orders today', value: String(todaySales.length), note: 'All orders created today' },
+    { label: 'Open orders today', value: String(openOrders), note: 'Pending orders created today' },
+  ]
+>>>>>>> 61924c3bf27ac1f8dd1d0fe45d66ff45031f43e2
 
   return (
     <div className="space-y-8">
@@ -45,8 +102,12 @@ function DashboardHome() {
             key={card.label}
           >
             <p className="text-sm font-medium text-slate-500">{card.label}</p>
-            <p className="mt-4 text-3xl font-bold text-[#2C3947]">{card.value}</p>
-            <p className="mt-2 text-xs text-slate-400">{card.note}</p>
+            <p className="mt-4 text-3xl font-bold text-[#2C3947]">
+              {error ? '—' : loading ? '…' : card.value}
+            </p>
+            <p className={`mt-2 text-xs ${error ? 'text-red-600' : 'text-slate-400'}`}>
+              {error || card.note}
+            </p>
           </article>
         ))}
       </section>
