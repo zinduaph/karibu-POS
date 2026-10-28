@@ -1,10 +1,10 @@
 import { backendUrl } from '../config'
+import { getAccessToken } from './authToken'
 
 const API_BASE_URL = `${backendUrl}/api`
-const AUTH_TOKEN_KEY = import.meta.env.VITE_AUTH_TOKEN_KEY || 'token'
 
 const request = async (path, options = {}) => {
-  const token = window.localStorage.getItem(AUTH_TOKEN_KEY)
+  const token = getAccessToken()
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -55,4 +55,16 @@ export const collectCashPayment = ({ orderId, amountReceived }) =>
   request('/sales/cash-payment', {
     method: 'POST',
     body: JSON.stringify({ orderId, amountReceived }),
+  })
+
+export const recordTillPayment = ({ orderId, receiptLast4 }) =>
+  request('/sales/till-payment', {
+    method: 'POST',
+    body: JSON.stringify({ orderId, receiptLast4 }),
+  })
+
+export const sendMpesaPrompt = ({ orderId, phoneNumber }) =>
+  request('/sales/mpesa-prompt', {
+    method: 'POST',
+    body: JSON.stringify({ orderId, phoneNumber }),
   })

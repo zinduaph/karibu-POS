@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const links = [
   { label: 'Home', href: '#home' },
@@ -39,6 +40,12 @@ const Navbar = () => {
               {label}
             </a>
           ))}
+          <Link
+            to="/login"
+            className="rounded-xl bg-[#22396F] px-4 py-2.5 text-sm font-semibold text-[#FCF1D0] transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
+          >
+            Cashier sign in
+          </Link>
         </div>
 
         <button
@@ -74,6 +81,13 @@ const Navbar = () => {
               {label}
             </a>
           ))}
+          <Link
+            to="/login"
+            className="rounded-lg px-4 py-3 font-semibold text-[#22396F] transition-colors hover:bg-[#22396F]/10 focus-visible:outline-2 focus-visible:outline-[#22396F]"
+            onClick={() => setMenuOpen(false)}
+          >
+            Cashier sign in
+          </Link>
         </div>
       </nav>
     </header>

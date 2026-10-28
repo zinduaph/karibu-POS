@@ -8,14 +8,13 @@ import {
 
 export const addSale = async (req,res) => {
     try{
-        const userId = req.userId?.userId
-        if(!userId || !mongoose.Types.ObjectId.isValid(userId)){
+        const restaurantId = req.user?.restaurantId
+        if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
             return res.status(401).json({success:false, message:'Authentication required'})
         }
 
-        const {orderId, productName, price, quantity, items, paymentMethod = 'cash', phoneNumber} = req.body
-        if(!['cash', 'mpesa'].includes(paymentMethod) ||
-           (items !== undefined && !Array.isArray(items)) ||
+        const {orderId, productName, price, quantity, items} = req.body
+        if((items !== undefined && !Array.isArray(items)) ||
            (orderId !== undefined && !mongoose.Types.ObjectId.isValid(orderId))){
             return res.status(400).json({success:false, message:'Please provide a product name, valid price and quantity, and payment method'})
         }
@@ -55,70 +54,20 @@ export const addSale = async (req,res) => {
             ? productName.trim()
             : saleItems.map(item => `${item.name} x ${item.quantity}`).join(', ')
 
-        let payerPhone
-        if(paymentMethod === 'mpesa'){
-            try{
-                payerPhone = normalizeKenyanPhone(phoneNumber)
-            }catch(error){
-                return res.status(400).json({success:false, message:error.message})
-            }
-
-            try{
-                assertMpesaConfigured()
-            }catch(error){
-                console.error('M-Pesa configuration error:', error.message)
-                return res.status(503).json({success:false, message:'M-Pesa payments are not configured'})
-            }
-        }
-
         const saleId = new mongoose.Types.ObjectId()
         const newSale = new SaleSchema({
             _id:saleId,
             orderId:orderId || saleId,
-            hotelId: userId,
+            hotelId: restaurantId,
             productName:saleName,
             price:numericPrice,
             quantity:numericQuantity,
             items:saleItems,
             totalAmount,
             paymentStatus:'pending',
-            paymentMethod,
-            payerPhone
+            paymentMethod:'pending'
         })
         await newSale.save()
-
-        if(paymentMethod === 'mpesa'){
-            try{
-                const payment = await initiateStkPush({
-                    phoneNumber:payerPhone,
-                    amount:totalAmount,
-                    accountReference:newSale._id.toString()
-                })
-
-                newSale.merchantRequestId = payment.MerchantRequestID
-                newSale.checkoutRequestId = payment.CheckoutRequestID
-                await newSale.save()
-
-                return res.status(202).json({
-                    success:true,
-                    message:'Sale created. Approve the M-Pesa prompt on your phone.',
-                    sale:newSale
-                })
-            }catch(error){
-                if(error.paymentOutcome === 'rejected'){
-                    newSale.paymentStatus = 'failed'
-                    await newSale.save()
-                }
-                console.error('Error initiating M-Pesa payment:', error.message)
-                return res.status(502).json({
-                    success:false,
-                    message:error.paymentOutcome === 'unknown'
-                        ? 'M-Pesa did not confirm whether the prompt was created. Check the sale status before retrying.'
-                        : 'Could not start the M-Pesa payment. Please try again.',
-                    sale:newSale
-                })
-            }
-        }
 
         return res.status(201).json({success:true, message:'Sale added successfully', sale:newSale})
 
@@ -194,26 +143,31 @@ export const mpesaCallback = async (req,res) => {
 // save the oders as pedning as the customer is eating in the hotel and then can initiate the payment when the customer is done with the meal
 
 export const getAllSalesByHotel = async (req,res) => {
-    const userId = req.userId?.userId
-    const {page = 1, limit = 10} = req.query
+    const restaurantId = req.user?.restaurantId
+    const {page = 1, limit = 10, status} = req.query
     const numericPage = Number(page)
     try{
-        if(!userId || !mongoose.Types.ObjectId.isValid(userId)){
+        if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
             return res.status(401).json({success:false, message:'Authentication required'})
         }
 
         const numericLimit = Number(limit)
         if(!Number.isInteger(numericPage) || numericPage < 1 ||
-           !Number.isInteger(numericLimit) || numericLimit < 1 || numericLimit > 100){
+           !Number.isInteger(numericLimit) || numericLimit < 1 || numericLimit > 100 ||
+           (status !== undefined && !['pending', 'completed', 'failed'].includes(status))){
             return res.status(400).json({success:false, message:'Invalid page or limit'})
         }
 
+        const saleFilter = {
+            hotelId:restaurantId,
+            ...(status && {paymentStatus:status})
+        }
         const [sales, totalSales] = await Promise.all([
-            SaleSchema.find({hotelId:userId})
+            SaleSchema.find(saleFilter)
                 .sort({createdAt:-1})
                 .skip((numericPage - 1) * numericLimit)
                 .limit(numericLimit),
-            SaleSchema.countDocuments({hotelId:userId})
+            SaleSchema.countDocuments(saleFilter)
         ])
 
         return res.json({
@@ -235,10 +189,10 @@ export const getAllSalesByHotel = async (req,res) => {
 // from the customer they enter the amount of cash recived and the order id and the API will update the payment status to completed
 
 export const cashPayment = async (req,res) => {
-    const userId = req.userId?.userId
+    const restaurantId = req.user?.restaurantId
     const {orderId, amountReceived} = req.body
     try{
-        if(!userId || !mongoose.Types.ObjectId.isValid(userId)){
+        if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
             return res.status(401).json({success:false, message:'Authentication required'})
         }
 
@@ -250,17 +204,13 @@ export const cashPayment = async (req,res) => {
         if(!Number.isFinite(numericAmountReceived) || numericAmountReceived <= 0){
             return res.status(400).json({success:false, message:'Invalid amount received'})
         }
-        const sale = await SaleSchema.findOne({orderId, hotelId:userId})
+        const sale = await SaleSchema.findOne({orderId, hotelId:restaurantId})
         if(!sale){
             return res.status(404).json({success:false, message:'Sale not found'})
         }
 
-        if(sale.paymentMethod !== 'cash'){
-            return res.status(400).json({success:false, message:'This sale is not a cash payment'})
-        }
-
-        if(sale.paymentStatus !== 'pending'){
-            return res.status(400).json({success:false, message:'This sale is not pending payment'})
+        if(!['pending', 'failed'].includes(sale.paymentStatus)){
+            return res.status(400).json({success:false, message:'This sale is already paid'})
         }
 
         if(numericAmountReceived < sale.totalAmount){
@@ -268,6 +218,7 @@ export const cashPayment = async (req,res) => {
         }
 
         sale.paymentStatus = 'completed'
+        sale.paymentMethod = 'cash'
         sale.amountReceived = numericAmountReceived
         sale.change = numericAmountReceived - sale.totalAmount
         await sale.save()
@@ -279,19 +230,119 @@ export const cashPayment = async (req,res) => {
     }
 }
 
+export const recordTillPayment = async (req,res) => {
+        const restaurantId = req.user?.restaurantId
+        const {orderId, receiptLast4} = req.body ?? {}
+        try{
+            if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
+                return res.status(401).json({success:false, message:'Authentication required'})
+            }
+            if(!mongoose.Types.ObjectId.isValid(orderId)){
+                return res.status(400).json({success:false, message:'Invalid order ID'})
+            }
+            if(typeof receiptLast4 !== 'string' || !/^[A-Z0-9]{4}$/i.test(receiptLast4)){
+                return res.status(400).json({success:false, message:'Enter the last four characters of the M-Pesa receipt'})
+            }
+
+            const sale = await SaleSchema.findOne({orderId, hotelId:restaurantId})
+            if(!sale){
+                return res.status(404).json({success:false, message:'Sale not found'})
+            }
+            if(!['pending', 'failed'].includes(sale.paymentStatus)){
+                return res.status(400).json({success:false, message:'This sale is already paid'})
+            }
+
+            sale.paymentStatus = 'completed'
+            sale.paymentMethod = 'mpesa_till'
+            sale.mpesaReceiptLast4 = receiptLast4.toUpperCase()
+            await sale.save()
+            return res.json({success:true, message:'M-Pesa Till payment recorded successfully', sale})
+        }catch(error){
+            console.error('Error recording M-Pesa Till payment:', error.message)
+            return res.status(500).json({success:false, message:'Internal server error'})
+        }
+    }
+
+export const startMpesaPayment = async (req,res) => {
+        const restaurantId = req.user?.restaurantId
+        const {orderId, phoneNumber} = req.body ?? {}
+        try{
+            if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
+                return res.status(401).json({success:false, message:'Authentication required'})
+            }
+            if(!mongoose.Types.ObjectId.isValid(orderId)){
+                return res.status(400).json({success:false, message:'Invalid order ID'})
+            }
+            let payerPhone
+            try{
+                payerPhone = normalizeKenyanPhone(phoneNumber)
+            }catch(error){
+                return res.status(400).json({success:false, message:error.message})
+            }
+            try{
+                assertMpesaConfigured()
+            }catch(error){
+                console.error('M-Pesa configuration error:', error.message)
+                return res.status(503).json({success:false, message:'M-Pesa payments are not configured'})
+            }
+
+            const sale = await SaleSchema.findOne({orderId, hotelId:restaurantId})
+            if(!sale){
+                return res.status(404).json({success:false, message:'Sale not found'})
+            }
+            if(!['pending', 'failed'].includes(sale.paymentStatus)){
+                return res.status(400).json({success:false, message:'This sale is already paid'})
+            }
+
+            sale.paymentMethod = 'mpesa'
+            sale.paymentStatus = 'pending'
+            sale.payerPhone = payerPhone
+            sale.merchantRequestId = undefined
+            sale.checkoutRequestId = undefined
+            await sale.save()
+
+            try{
+                const payment = await initiateStkPush({
+                    phoneNumber:payerPhone,
+                    amount:sale.totalAmount,
+                    accountReference:sale._id.toString()
+                })
+                sale.merchantRequestId = payment.MerchantRequestID
+                sale.checkoutRequestId = payment.CheckoutRequestID
+                await sale.save()
+                return res.status(202).json({
+                    success:true,
+                    message:'M-Pesa prompt sent. Approve it on the customer phone.',
+                    sale
+                })
+            }catch(error){
+                console.error('Error initiating M-Pesa payment:', error.message)
+                return res.status(502).json({
+                    success:false,
+                    message:error.paymentOutcome === 'unknown'
+                        ? 'M-Pesa did not confirm whether the prompt was created. Check the order status before retrying.'
+                        : 'Could not start the M-Pesa payment. Please try again.',
+                })
+            }
+        }catch(error){
+            console.error('Error starting M-Pesa payment:', error.message)
+            return res.status(500).json({success:false, message:'Internal server error'})
+    }
+}
+
 // This API is to get a specific sale by id for admin to view the sale details and the payment status
 export const getSaleById = async (req,res) => {
-    const userId = req.userId?.userId
+    const restaurantId = req.user?.restaurantId
     const {saleId} = req.params
     try{
-        if(!userId || !mongoose.Types.ObjectId.isValid(userId)){
+        if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
             return res.status(401).json({success:false, message:'Authentication required'})
         }
         if(!mongoose.Types.ObjectId.isValid(saleId)){
             return res.status(400).json({success:false, message:'Invalid sale ID'})
         }
 
-        const sale = await SaleSchema.findOne({_id:saleId, hotelId:userId})
+        const sale = await SaleSchema.findOne({_id:saleId, hotelId:restaurantId})
         if(!sale){
             return res.status(404).json({success:false, message:'Sale not found'})
         }

@@ -92,6 +92,41 @@ export const adminLogin = asyncHandler(async (req, res) => {
   await startSession(user, res);
 });
 
+export const cashierRegister = asyncHandler(async (req, res) => {
+  const { name, username, pin } = req.body;
+  const restaurantId = req.user.restaurantId;
+  const restaurant = await Restaurant.findOne({ _id: restaurantId, isActive: true }).select('code');
+  if (!restaurant) {
+    return res.status(403).json({ message: 'Restaurant is not active' });
+  }
+
+  const user = new User({
+    restaurantId,
+    name,
+    username,
+    pinHash: await hashPin(pin),
+    role: 'cashier',
+    mustChangePin: true,
+  });
+
+  try {
+    await user.save();
+  } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.username) {
+      return res.status(409).json({ message: 'A cashier with this username already exists' });
+    }
+    throw error;
+  }
+
+  res.status(201).json({
+    user: {
+      ...publicUser(user),
+      username: user.username,
+    },
+    restaurantCode: restaurant.code,
+  });
+});
+
 export const cashierLogin = asyncHandler(async (req, res) => {
   const { restaurantCode, username, pin } = req.body;
   const restaurant = await Restaurant.findOne({ code: restaurantCode, isActive: true });

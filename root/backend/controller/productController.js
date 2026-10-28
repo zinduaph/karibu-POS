@@ -1,10 +1,13 @@
+import HotelModel from '../model/HotelModel.js'
+import ProductModel from '../model/productModel.js'
+import User from '../model/userModel.js'
 
 // API to add new product for a specific hotel
 export const addProduct = async (req,res) => {
     const {userId} = req.userId
     const {name,price,category,} = req.body 
     try {
-        const user =  findById(userId)
+        const user = await User.findById(userId)
         if(!user) {
             return res.json({success:false, message:"user not found please login again"})
         }
@@ -29,7 +32,7 @@ export const addProduct = async (req,res) => {
 export const getAllProductsByHotel = async (req, res) => {
     const {userId } = req.userId
     try {
-        const user = await findById(userId)
+        const user = await User.findById(userId)
         if(!user) {
             return res.json({success:false, message:"user not found please login again"})
         }
@@ -45,7 +48,7 @@ export const getProductById = async (req,res) => {
     const {productId} = req.params
     const {userId} = req.userId
     try {
-        const user = await findById(userId)
+        const user = await User.findById(userId)
         if(!user){
             return res.json({success:false, message:"user not found please login again"})
         }
@@ -64,7 +67,7 @@ export const updateProductById = async (req,res) => {
     const {productId} = req.params
     const {userId} = req.userId
     try {
-        const user = await findById(userId)
+        const user = await User.findById(userId)
         if(!user){
             return res.json({success:false, message:"user not found please login again"})
         }
@@ -89,7 +92,7 @@ export const addHotelDetails = async (req,res) => {
     const {userId} = req.userId
     const {name, location, logo, contactInfo} = req.body
     try{
-        const user = await findById(userId)
+        const user = await User.findById(userId)
         if(!user){
             return res.json({success:false, message:"user not found please login again"})
         }

@@ -1,7 +1,11 @@
 
 import { NavLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/useAuth'
 
 const SideBar = () => {
+    const { logout } = useAuth()
+    const navigate = useNavigate()
 
     const links = [
         { to:'/dashboard/home', label:"Home"},
@@ -29,6 +33,16 @@ const SideBar = () => {
             {link.label}
           </NavLink>
         ))}
+        <button
+          className="w-full rounded-2xl border border-[#547A95]/30 bg-white px-2 py-2 text-left text-sm text-[#2C3947] transition hover:border-[#547A95]/50"
+          onClick={async () => {
+            const notice = await logout()
+            navigate('/login', { replace: true, state: notice ? { notice } : undefined })
+          }}
+          type="button"
+        >
+          Sign out
+        </button>
       </div>
     </div>
 

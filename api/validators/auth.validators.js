@@ -1,10 +1,19 @@
 import { z } from 'zod';
+import { isWeakPin } from '../utils/credentials.js';
+
+const cashierPin = z.string().regex(/^\d{6}$/).refine((pin) => !isWeakPin(pin));
 
 export const adminRegister = z.object({
   name: z.string().trim().min(1).max(100),
   email: z.string().trim().toLowerCase().email().max(254),
   password: z.string().min(12).max(200),
   restaurantName: z.string().trim().min(1).max(120),
+});
+
+export const cashierRegister = z.object({
+  name: z.string().trim().min(1).max(100),
+  username: z.string().trim().toLowerCase().min(1).max(40),
+  pin: cashierPin,
 });
 
 export const adminLogin = z.object({
