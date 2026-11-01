@@ -7,7 +7,7 @@ import menuRoutes from "./routes/menu.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import cors from "./middleware/cors.js";
-import billingRoutes from './routes/billing.routes.js';
+import billingRoutes from './routes/billingRoutes.js';
 import { billingSweep } from './services/billing.service.js';
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";

@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import RefreshToken from '../models/refreshToken.js';
 import User from '../models/cashier.js';
 import { sha256 } from '../utils/token.js';
- import Restaurant from '../models/Restaurant.js';
+ import Restaurant from '../models/resturant.js';
 import { accessState } from '../utils/access.js';
 
 async function loadUser(userId) {
@@ -57,6 +57,12 @@ export async function authenticate(req, res, next) {
           : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
         return res.status(403).json(body);
       }
+      // restaurant active + subscription check
+      const restaurant = await Restaurant.findById(user.restaurantId).select('isActive accessUntil');
+      if (!restaurant?.isActive) return res.status(401).json({ message: 'Unauthorized' }); // switched off: nothing works
+      if (accessState(restaurant) === 'expired' && !allowedWhenExpired(req, user.role)) {
+        return res.status(402).json({ code: 'SUBSCRIPTION_EXPIRED', message: "This restaurant's subscription has ended." });
+      }
       return next();
     }
 
@@ -77,6 +83,12 @@ export async function authenticate(req, res, next) {
         : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
       return res.status(403).json(body);
     }
+    // restaurant active + subscription check
+    const restaurant = await Restaurant.findById(user.restaurantId).select('isActive accessUntil');
+    if (!restaurant?.isActive) return res.status(401).json({ message: 'Unauthorized' }); // switched off: nothing works
+    if (accessState(restaurant) === 'expired' && !allowedWhenExpired(req, user.role)) {
+      return res.status(402).json({ code: 'SUBSCRIPTION_EXPIRED', message: "This restaurant's subscription has ended." });
+    }
     next();
   } catch (e) {
     res.status(401).json({ message: 'Authentication error' });
@@ -89,11 +101,6 @@ function allowedWhenExpired(req, role) {
   if (role !== 'admin') return false;                 // cashiers: nothing else
   if (path.startsWith('/api/billing')) return true;   // the admin can pay
   return req.method === 'GET' && (path === '/api/restaurant' || path.startsWith('/api/reports/')); // and read their data
-}
- const restaurant = await Restaurant.findById(user.restaurantId).select('isActive accessUntil');
-if (!restaurant?.isActive) return res.status(401).json({ message: 'Unauthorized' }); // switched off: nothing works
-if (accessState(restaurant) === 'expired' && !allowedWhenExpired(req, user.role)) {
-  return res.status(402).json({ code: 'SUBSCRIPTION_EXPIRED', message: "This restaurant's subscription has ended." });
 }
 
 export const requireRole = (...roles) => (req, res, next) =>
