@@ -42,6 +42,7 @@ function SignUp() {
         password: form.password,
       })
       setRestaurantCode(result.restaurant?.code || '')
+      navigate('/onboarding', { replace: true })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -63,7 +64,7 @@ function SignUp() {
           </div>
           <button
             className="w-full rounded-xl bg-[#547A95] px-4 py-3 font-semibold text-white transition hover:bg-[#42657e] disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => navigate('/dashboard/home', { replace: true })}
+            onClick={() => navigate('/onboarding', { replace: true })}
             type="button"
           >
             Continue to dashboard

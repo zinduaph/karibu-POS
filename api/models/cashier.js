@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema(
   {
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true },
+    adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }, // admin who created this cashier
     name: { type: String, required: true, trim: true },
     role: { type: String, enum: ['admin', 'cashier'], required: true },
 

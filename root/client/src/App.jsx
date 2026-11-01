@@ -17,24 +17,28 @@ import { Toaster } from 'react-hot-toast'
 // Role protection is now handled by the backend (auth middleware).
 // These helper functions check localStorage for UX guidance only.
 
-function checkRole(role) {
+function getUser() {
   let user = null
   try {
     user = JSON.parse(window.localStorage.getItem('user') || 'null')
   } catch {
     window.localStorage.removeItem('user')
   }
+  return user
+}
+
+function checkRole(role) {
+  const user = getUser()
   return user && user.role === role
 }
 
 function isAuthenticated() {
-  let user = null
-  try {
-    user = JSON.parse(window.localStorage.getItem('user') || 'null')
-  } catch {
-    window.localStorage.removeItem('user')
-  }
-  return !!user
+  return !!getUser()
+}
+
+function mustChangePin() {
+  const user = getUser()
+  return user && user.role === 'cashier' && user.mustChangePin === true
 }
 
 function App() {
@@ -60,7 +64,13 @@ function App() {
         />
         <Route
           path='/dashboard'
-          element={checkRole('cashier') ? <Dashboard /> : <Navigate to="/login" replace />}
+          element={
+            checkRole('cashier') && mustChangePin()
+              ? <Navigate to="/change-pin" replace />
+              : checkRole('cashier')
+                ? <Dashboard />
+                : <Navigate to="/login" replace />
+          }
         >
           <Route index element={<DashboardHome />} />
           <Route path='home' element={<DashboardHome />} />

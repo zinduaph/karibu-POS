@@ -8,14 +8,13 @@ function DashboardHome() {
   const { accessToken } = useAuth()
   const restaurant = getStoredRestaurant()
   const [sales, setSales] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => Boolean(accessToken))
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
 
     if (!accessToken) {
-      setLoading(false)
       return
     }
 

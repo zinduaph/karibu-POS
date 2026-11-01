@@ -32,7 +32,7 @@ const AdminRegistrationPage = () => {
         password: form.password,
         restaurantName: form.restaurantName,
       })
-      navigate('/onboarding', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     } catch (submitError) {
       setError(submitError.message || 'Unable to create admin account. Try again.')
     } finally {

@@ -31,7 +31,7 @@ const ChangePasswordPage = () => {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword,
       })
-      navigate('/onboarding', { replace: true })
+      navigate('/admin/dashboard', { replace: true })
     } catch (changeError) {
       setError(changeError.message || 'Unable to change your password. Try again.')
     } finally {

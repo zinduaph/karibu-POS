@@ -127,46 +127,7 @@ export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
   return data
 }
 
-export const getOnboardingStatus = async () => {
-  return authRequest('/onboarding/status', { method: 'GET' })
-}
-
-export const adminChangePassword = async ({ currentPassword, newPassword }) => {
-  return authRequest('/onboarding/admin/password', {
-    method: 'POST',
-    body: JSON.stringify({ currentPassword, newPassword }),
-  })
-}
-
-export const updateRestaurantDetails = async (payload) => {
-  return authRequest('/onboarding/restaurant/details', {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
 export const markOnboardingComplete = async () => {
   return authRequest('/onboarding/complete', { method: 'POST' })
 }
 
-export const addProduct = async (payload) => {
-  return authRequest('/onboarding/products', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
-
-export const listProducts = async () => {
-  return authRequest('/onboarding/products', { method: 'GET' })
-}
-
-export const updateProduct = async (id, payload) => {
-  return authRequest(`/onboarding/products/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  })
-}
-
-export const deleteProduct = async (id) => {
-  return authRequest(`/onboarding/products/${id}`, { method: 'DELETE' })
-}

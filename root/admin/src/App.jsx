@@ -1,7 +1,4 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import AdminLoginPage from './pages/loginAdmin'
-import AdminRegistrationPage from './pages/adminreg'
-import CashierRegistrationPage from './pages/cashierreg'
 import Dashboard from './pages/dashboard'
 import DashboardHome from './pages/dashboardHome'
 import LoginPage from './pages/login'
@@ -11,20 +8,13 @@ import { useAuth } from './context/useAuth'
 import Ingredients from './pages/ingredients'
 import MenuItems from './pages/menuitems'
 import Orders from './pages/orders'
+import Pricing from './pages/pricing'
+import BillingCallback from './pages/billingCallback'
 import Reports from './pages/reports'
 import Sales from './pages/sales'
 import Settings from './pages/settings'
 import Staff from './pages/staff'
 import './App.css'
-import { getStoredToken, getStoredUser } from './services/authApi'
-
-function RequireAdmin({ children }) {
-  const user = getStoredUser()
-  if (!getStoredToken() || user?.role !== 'admin') {
-    return <Navigate replace to="/loginAdmin" />
-  }
-  return children
-}
 
 function RequireAuth({ children }) {
   const { loading, user } = useAuth()
@@ -32,7 +22,8 @@ function RequireAuth({ children }) {
   if (loading) {
     return <div className="grid min-h-screen place-items-center text-sm text-slate-600">Checking your session…</div>
   }
-  return user ? children : <Navigate replace to="/login" />
+  if (!user) return <Navigate replace to="/login" />
+  return children
 }
 
 function App() {
@@ -58,8 +49,10 @@ function App() {
             <Route element={<Ingredients />} path="ingredients" />
             <Route element={<Staff />} path="staff" />
             <Route element={<Reports />} path="reports" />
+            <Route element={<Pricing />} path="pricing" />
             <Route element={<Settings />} path="settings" />
           </Route>
+          <Route element={<BillingCallback />} path="/billing/callback" />
           <Route element={<Navigate replace to="/dashboard/home" />} path="*" />
         </Routes>
       </BrowserRouter>

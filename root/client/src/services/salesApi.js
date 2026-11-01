@@ -1,7 +1,7 @@
-import { backendUrl } from '../config'
+import { salesApiUrl } from '../config'
 import { getAccessToken } from './authToken'
 
-const API_BASE_URL = `${backendUrl}/api`
+const API_BASE_URL = `${salesApiUrl}/api`
 
 const request = async (path, options = {}) => {
   const token = getAccessToken()

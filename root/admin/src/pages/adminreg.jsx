@@ -26,7 +26,7 @@ const AdminRegistrationPage = () => {
     setIsSubmitting(true)
     try {
       await adminRegister(form)
-      window.location.replace(`${clientAppUrl}/onboarding`)
+      window.location.replace(`${clientAppUrl}/admin/dashboard`)
     } catch (submitError) {
       setError(submitError.message || 'Unable to create admin account.')
     } finally {

@@ -11,6 +11,7 @@ const links = [
   { to: '/dashboard/ingredients', label: 'Ingredients', icon: 'ingredient' },
   { to: '/dashboard/staff', label: 'Staff', icon: 'users' },
   { to: '/dashboard/reports', label: 'Reports', icon: 'report' },
+  { to: '/dashboard/pricing', label: 'Pricing', icon: 'pricing' },
   { to: '/dashboard/settings', label: 'Settings', icon: 'settings' },
 ]
 
@@ -22,6 +23,7 @@ const iconPaths = {
   ingredient: <><path d="M12 3v18M5 8c2-2 4-2 7 0s5 2 7 0M5 16c2-2 4-2 7 0s5 2 7 0" /><path d="M5 8v8m14-8v8" /></>,
   users: <><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="10" cy="7" r="4" /><path d="M20 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
   report: <><path d="M5 3h14v18H5z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+  pricing: <><path d="M3 6h18M3 10h18M3 14h18M12 2v20" /><circle cx="12" cy="6" r="1" /><circle cx="12" cy="10" r="1" /><circle cx="12" cy="14" r="1" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1-.1 1.8Z" transform="translate(-1 -1)" /></>,
 }
 
