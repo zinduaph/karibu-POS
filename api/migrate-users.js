@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import mongoose from 'mongoose';
 import { connectedDB } from './config/db.js';
 import User from './models/cashier.js';

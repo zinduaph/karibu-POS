@@ -7,14 +7,14 @@ import menuRoutes from "./routes/menu.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
 import cors from "./middleware/cors.js";
-import billingRoutes from './routes/billingRoutes.js';
+import billingRoutes from './routes/billing.routes.js';
 import { billingSweep } from './services/billing.service.js';
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const requiredEnvironment = ['MONGO_URI', 'ACCESS_TOKEN', 'PIN_PEPPER', 'PAYSTACK_SECRET_KEY'];
+const requiredEnvironment = ['MONGO_URI', 'ACCESS_TOKEN', 'PIN_PEPPER'];
 const missingEnvironment = requiredEnvironment.filter(
   (name) => !process.env[name]?.trim(),
 );
@@ -45,6 +45,19 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
     res.setHeader('Vary', 'Origin');
   }
+   const RAW = ['/api/payments/webhook', '/api/billing/webhook'];
+
+app.use(express.json({
+  limit: '20kb',
+  verify: (req, _res, buf) => { if (RAW.some((p) => req.originalUrl.startsWith(p))) req.rawBody = buf; },
+}));
+// in the global rateLimit options:
+//   skip: (req) => RAW.some((p) => req.originalUrl.startsWith(p)),
+
+app.use('/api/billing', billingRoutes);
+
+// after mongoose.connect(...), next to the existing sweeper:
+setInterval(() => billingSweep().catch((e) => console.error('billing sweep failed:', e.message)), 10 * 60e3);
 
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
@@ -57,7 +70,6 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/menu-items", menuRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/reports", reportsRoutes);
-app.use("/api/billing", billingRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
