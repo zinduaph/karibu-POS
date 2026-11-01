@@ -1,7 +1,13 @@
-<<<<<<< HEAD
-import { backendUrl } from '../config'
+import { authApiUrl, apiRoot } from '../config'
 
-const API_BASE_URL = `${backendUrl}/api`
+export class AuthApiError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'AuthApiError'
+    this.status = status
+  }
+}
+
 const AUTH_TOKEN_KEY = import.meta.env.VITE_AUTH_TOKEN_KEY || 'token'
 
 export const getStoredToken = () => window.localStorage.getItem(AUTH_TOKEN_KEY)
@@ -45,7 +51,7 @@ const persistAdminSession = (data) => {
 const postAuth = async (path, payload) => {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(`${authApiUrl}${path}`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -57,13 +63,22 @@ const postAuth = async (path, payload) => {
     })
   }
 
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok || data.success === false) {
-    const validationErrors = data.errors
+  const body = await response.text()
+  let data
+  if (body) {
+    try {
+      data = JSON.parse(body)
+    } catch {
+      if (response.ok) throw new Error('The authentication server returned an invalid response.')
+    }
+  }
+
+  if (!response.ok) {
+    const validationErrors = data?.errors
     const message =
       Array.isArray(validationErrors) && validationErrors.length > 0
         ? validationErrors.map(({ field, message: issue }) => `${field}: ${issue}`).join(' ')
-        : data.message || `Request failed (${response.status})`
+        : data?.message || `Request failed (${response.status})`
     const error = new Error(message)
     error.status = response.status
     error.data = data
@@ -73,16 +88,16 @@ const postAuth = async (path, payload) => {
 }
 
 export const adminRegister = async (payload) =>
-  persistAdminSession(await postAuth('/auth/admin/register', payload))
+  persistAdminSession(await postAuth('/admin/register', payload))
 
 export const adminLogin = async ({ email, password }) => {
-  return persistAdminSession(await postAuth('/auth/admin/login', { email, password }))
+  return persistAdminSession(await postAuth('/admin/login', { email, password }))
 }
 
 export const cashierRegister = async ({ name, username, pin }) => {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}/auth/cashier/register`, {
+    response = await fetch(`${apiRoot}/auth/cashier/register`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -108,13 +123,14 @@ export const cashierRegister = async ({ name, username, pin }) => {
     error.status = response.status
     error.data = data
     throw error
-=======
-import { authApiUrl } from '../config'
+  }
+  return data
+}
 
-export class AuthApiError extends Error {
+export class AuthRequestError extends Error {
   constructor(message, status) {
     super(message)
-    this.name = 'AuthApiError'
+    this.name = 'AuthRequestError'
     this.status = status
   }
 }
@@ -148,17 +164,14 @@ export async function authRequest(path, options = {}) {
     const validationErrors = Array.isArray(data?.errors)
       ? data.errors.map(({ field, message }) => `${field}: ${message}`).join(' ')
       : ''
-    throw new AuthApiError(
+    throw new AuthRequestError(
       validationErrors || data?.message || body || 'Authentication request failed.',
       response.status,
     )
->>>>>>> 61924c3bf27ac1f8dd1d0fe45d66ff45031f43e2
   }
 
   return data
 }
-<<<<<<< HEAD
-=======
 
 export function registerCashier(accessToken, values) {
   return authRequest('/cashier/register', {
@@ -177,4 +190,3 @@ export async function getCashiers(accessToken) {
   }
   return result.cashiers
 }
->>>>>>> 61924c3bf27ac1f8dd1d0fe45d66ff45031f43e2

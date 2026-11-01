@@ -1,28 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-<<<<<<< HEAD
-import { getStoredRestaurant } from '../services/authApi'
-
-const summaryCards = [
-  { label: 'Sales today', value: '—', note: 'Sales data will appear here' },
-  { label: 'Open orders', value: '—', note: 'Order activity will appear here' },
-  { label: 'Products', value: '—', note: 'Product totals will appear here' },
-]
-
-function DashboardHome() {
-  const restaurant = getStoredRestaurant()
-=======
 import { useAuth } from '../context/useAuth'
 import { getAllSales } from '../services/salesApi'
+import { getStoredRestaurant } from '../services/authApi'
 
 function DashboardHome() {
   const { accessToken } = useAuth()
+  const restaurant = getStoredRestaurant()
   const [sales, setSales] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
+
+    if (!accessToken) {
+      setLoading(false)
+      return
+    }
 
     getAllSales(accessToken)
       .then((result) => {
@@ -65,7 +60,6 @@ function DashboardHome() {
     { label: 'Orders today', value: String(todaySales.length), note: 'All orders created today' },
     { label: 'Open orders today', value: String(openOrders), note: 'Pending orders created today' },
   ]
->>>>>>> 61924c3bf27ac1f8dd1d0fe45d66ff45031f43e2
 
   return (
     <div className="space-y-8">
