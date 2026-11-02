@@ -16,14 +16,29 @@ const request = async (path, options = {}) => {
       credentials: 'include',
       headers,
     })
-  } catch (error) {
-    throw new Error(
-      'Unable to reach the backend. Check that the API server is running.',
-      { cause: error },
+  } catch (cause) {
+    const error = new Error(
+      'Unable to reach the backend. Check your connection.',
+      { cause },
     )
+    error.code = 'NETWORK_ERROR'
+    throw error
   }
 
-  const data = await response.json().catch(() => ({}))
+  let data
+  try {
+    data = await response.json()
+  } catch (cause) {
+    const error = new Error(
+      response.ok
+        ? 'The backend returned an invalid response.'
+        : `Request failed (${response.status}).`,
+      { cause },
+    )
+    error.status = response.status
+    error.code = response.ok ? 'INVALID_RESPONSE' : undefined
+    throw error
+  }
   if (!response.ok || data.success === false) {
     const error = new Error(data.message || `Request failed (${response.status})`)
     error.status = response.status
