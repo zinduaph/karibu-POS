@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth.js';
 const menuRouter = Router();
 
 menuRouter.post('/', authenticate, requireRole('admin'), addMenuItems);
-menuRouter.get('/', authenticate, requireRole('admin'), getMenuItems);
+menuRouter.get('/', authenticate, requireRole('admin', 'cashier'), getMenuItems);
 menuRouter.delete('/:menuItemId', authenticate, requireRole('admin'), deleteMenuItems);
 
 export default menuRouter;

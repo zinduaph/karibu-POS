@@ -117,9 +117,13 @@ export const getMenuItems = async (req,res) => {
   }
 
   try {
-    const menuItems = await MenuItemModel.find({ HotelId })
-      .populate('recipe.ingredientId', 'name baseUnit')
-      .sort({ name: 1 });
+    const menuQuery = MenuItemModel.find({ HotelId });
+    if (req.user.role !== 'cashier') {
+      menuQuery.populate('recipe.ingredientId', 'name baseUnit');
+    } else {
+      menuQuery.select('name category price isAvailable');
+    }
+    const menuItems = await menuQuery.sort({ name: 1 });
     return res.status(200).json({ success: true, menuItems });
   } catch (error) {
     console.error('Failed to get menu items:', error);

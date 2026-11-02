@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 
 const saleSchema = new mongoose.Schema({
     orderId:{type:mongoose.Schema.Types.ObjectId, index:true},
+    clientOrderId:{type:String},
     hotelId: {type:mongoose.Schema.Types.ObjectId, ref:"Hotel", required:true},
     productName: {type:String, required:true},
     price:{type:Number, required:true},
@@ -26,6 +27,14 @@ const saleSchema = new mongoose.Schema({
     mpesaReceiptLast4: {type:String, uppercase:true, match:/^[A-Z0-9]{4}$/},
     createdAt: {type:Date, default: Date.now}
 })
+
+saleSchema.index(
+    {hotelId:1, clientOrderId:1},
+    {
+        unique:true,
+        partialFilterExpression:{clientOrderId:{$type:'string'}}
+    }
+)
 
 const SaleSchema = mongoose.model('sale',saleSchema)
 export default SaleSchema

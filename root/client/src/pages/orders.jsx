@@ -5,6 +5,12 @@ import {
   recordTillPayment,
   sendMpesaPrompt,
 } from '../services/salesApi'
+import {
+  getCachedSales,
+  getOrdersLocally,
+  saveCachedSales,
+} from '../services/offlineOrders'
+import { useAuth } from '../context/useAuth'
 
 const filters = [
   { label: 'All orders', value: 'all' },
@@ -33,6 +39,7 @@ const getOrderId = (order) => order.orderId || order.id || 'Order ID unavailable
 
 const mapSaleToOrder = (sale) => ({
   id: sale._id,
+  clientOrderId: sale.clientOrderId,
   orderId: sale.orderId || sale._id,
   createdAt: sale.createdAt,
   items:
@@ -58,6 +65,24 @@ const mapSaleToOrder = (sale) => ({
   change: sale.change,
   mpesaReceiptLast4: sale.mpesaReceiptLast4,
   mpesaReceiptNumber: sale.mpesaReceiptNumber,
+})
+
+const mapOfflineOrder = (order) => ({
+  id: order.clientOrderId,
+  clientOrderId: order.clientOrderId,
+  orderId: order.clientOrderId,
+  createdAt: order.createdAt,
+  items: order.items.map((item, index) => ({
+    id: `${order.clientOrderId}-${index}`,
+    name: item.name,
+    price: Number(item.price),
+    quantity: Number(item.quantity),
+  })),
+  total: Number(order.totalAmount),
+  paymentStatus: 'pending',
+  paymentMethod: 'pending',
+  isLocal: true,
+  needsReview: !order.restaurantId,
 })
 
 const Icon = ({ name, className = 'size-5' }) => (
@@ -93,6 +118,7 @@ const Icon = ({ name, className = 'size-5' }) => (
 )
 
 const Orders = () => {
+  const { user } = useAuth()
   const [orders, setOrders] = useState([])
   const [activeFilter, setActiveFilter] = useState('all')
   const [storageError, setStorageError] = useState('')
@@ -104,32 +130,98 @@ const Orders = () => {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [isPaying, setIsPaying] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
 
   useEffect(() => {
     let active = true
 
     const loadOrders = async () => {
+      if (!user?.restaurantId) {
+        setStorageError('Your restaurant session is unavailable. Sign in again to load orders.')
+        setIsLoading(false)
+        return
+      }
+
+      const [cachedResult, localResult] = await Promise.allSettled([
+        getCachedSales(user.restaurantId),
+        getOrdersLocally(),
+      ])
+      if (!active) return
+
+      let serverSales = cachedResult.status === 'fulfilled'
+        ? cachedResult.value || []
+        : []
+      const localOrders = localResult.status === 'fulfilled'
+        ? localResult.value
+            .filter((order) => !order.restaurantId || order.restaurantId === user.restaurantId)
+            .map(mapOfflineOrder)
+        : []
+
+      const showOrders = (sales) => {
+        const syncedClientOrderIds = new Set(
+          sales.map((sale) => sale.clientOrderId).filter(Boolean),
+        )
+        setOrders([
+          ...sales.map(mapSaleToOrder),
+          ...localOrders.filter((order) => !syncedClientOrderIds.has(order.clientOrderId)),
+        ])
+      }
+
+      showOrders(serverSales)
+      setIsLoading(false)
+
+      if (!navigator.onLine) {
+        setStorageError(
+          cachedResult.status === 'rejected' && localResult.status === 'rejected'
+            ? 'Local order storage is unavailable on this device.'
+            : '',
+        )
+        return
+      }
+
       try {
         const response = await getSales()
         if (!active) return
-        setOrders(response.sales.map(mapSaleToOrder))
+        serverSales = response.sales
+        showOrders(serverSales)
         setStorageError('')
+        try {
+          await saveCachedSales(user.restaurantId, serverSales)
+        } catch (error) {
+          console.error('Unable to cache server orders for offline use:', error)
+        }
       } catch (error) {
         console.error('Unable to load sales from the backend:', error)
-        if (active) setStorageError(error.message || 'Orders could not be loaded from the backend.')
-      } finally {
-        if (active) setIsLoading(false)
+        if (!active) return
+        if (cachedResult.status === 'rejected' && localResult.status === 'rejected') {
+          setStorageError('Orders could not be loaded from the backend or local storage.')
+        } else if (serverSales.length === 0 && localOrders.length === 0) {
+          setStorageError('Unable to reach the backend. No previously saved orders are available on this device.')
+        } else {
+          setStorageError('Unable to reach the backend. Showing orders saved on this device.')
+        }
       }
     }
 
+    const updateNetworkStatus = () => {
+      setIsOnline(navigator.onLine)
+      if (navigator.onLine) loadOrders()
+    }
+
     loadOrders()
-    const refreshInterval = window.setInterval(loadOrders, 15000)
+    window.addEventListener('online', updateNetworkStatus)
+    window.addEventListener('offline', updateNetworkStatus)
+    const refreshInterval = window.setInterval(() => {
+      if (navigator.onLine) loadOrders()
+    }, 15000)
 
     return () => {
       active = false
+      window.removeEventListener('online', updateNetworkStatus)
+      window.removeEventListener('offline', updateNetworkStatus)
       window.clearInterval(refreshInterval)
     }
-  }, [])
+  }, [user?.restaurantId])
 
   const visibleOrders = useMemo(() => {
     const sortedOrders = [...orders].sort(
@@ -257,6 +349,15 @@ const Orders = () => {
         Orders are created as pending. Choose a payment method for an order when the customer is ready; M-Pesa prompts update after the payment callback.
       </div>
 
+      {!isOnline && (
+        <p
+          role="status"
+          className="rounded-xl border border-amber-700/20 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+        >
+          Offline mode: showing orders saved on this device. Payment actions need an internet connection.
+        </p>
+      )}
+
       {storageError && (
         <p
           role="alert"
@@ -324,7 +425,9 @@ const Orders = () => {
                   </div>
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${
-                      isPaid
+                      order.isLocal
+                        ? 'bg-amber-100 text-amber-900'
+                        : isPaid
                         ? 'bg-emerald-50 text-emerald-800'
                         : order.paymentStatus === 'failed'
                           ? 'bg-red-50 text-red-800'
@@ -333,14 +436,20 @@ const Orders = () => {
                   >
                     <span
                       className={`size-1.5 rounded-full ${
-                        isPaid
+                        order.isLocal
+                          ? 'bg-amber-600'
+                          : isPaid
                           ? 'bg-emerald-600'
                           : order.paymentStatus === 'failed'
                             ? 'bg-red-600'
                             : 'bg-amber-600'
                       }`}
                     />
-                    {isPaid
+                    {order.isLocal
+                      ? order.needsReview
+                        ? 'Needs review'
+                        : 'Waiting to sync'
+                      : isPaid
                       ? 'Paid'
                       : order.paymentStatus === 'failed'
                         ? 'Payment failed'
@@ -398,7 +507,13 @@ const Orders = () => {
                   </p>
                 )}
 
-                {!isPaid && (
+                {order.isLocal ? (
+                  <p className="border-t border-black/10 bg-amber-50 px-5 py-3 text-center text-sm font-medium text-amber-900">
+                    {order.needsReview
+                      ? 'This order was saved before restaurant scoping was enabled. Contact an administrator before syncing it.'
+                      : 'Saved on this device. Payment options will be available after it syncs.'}
+                  </p>
+                ) : !isPaid && (
                   <div className="grid gap-2 border-t border-black/10 bg-[#E8EDF2]/35 p-4 sm:grid-cols-3">
                     <button
                       type="button"

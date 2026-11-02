@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import HotelModel from '../model/HotelModel.js'
 import ProductModel from '../model/productModel.js'
 import User from '../model/userModel.js'
@@ -87,26 +88,52 @@ export const updateProductById = async (req,res) => {
     }
 }
 
-// API for adding hotel details like name, location, logo, and contact information
+// Save the restaurant's settings, creating them the first time and updating them thereafter.
 export const addHotelDetails = async (req,res) => {
-    const {userId} = req.userId
-    const {name, location, logo, contactInfo} = req.body
-    try{
-        const user = await User.findById(userId)
-        if(!user){
-            return res.json({success:false, message:"user not found please login again"})
-        }
-        const newHotelDetails = new HotelModel({
-            name,
-            location,
-            logo,
-            contactInfo,
-            hotelId:userId
-        })
-        await newHotelDetails.save()
-        res.json({success:true, message:'hotel details added successfully'})
+    const hotelId = req.user?.restaurantId
+    const {name, location, customerCareNumber, hotelEmail = ''} = req.body ?? {}
+    if (!hotelId || !mongoose.isValidObjectId(hotelId)) {
+        return res.status(401).json({success:false, message:'Authentication required'})
+    }
+    if (
+        typeof name !== 'string' || !name.trim() ||
+        typeof location !== 'string' || !location.trim() ||
+        typeof customerCareNumber !== 'string' || !customerCareNumber.trim() ||
+        typeof hotelEmail !== 'string'
+    ) {
+        return res.status(400).json({success:false, message:'Provide a name, location, and customer care number'})
+    }
 
-    } catch(error){
-        res.json({success:false, message:'error adding hotel details'})
+    try {
+        const hotelDetails = await HotelModel.findOneAndUpdate(
+            {hotelId},
+            {
+                name: name.trim(),
+                location: location.trim(),
+                customerCareNumber: customerCareNumber.trim(),
+                hotelEmail: hotelEmail.trim(),
+            },
+            {new:true, upsert:true, runValidators:true, setDefaultsOnInsert:true}
+        )
+        return res.json({success:true, message:'Hotel details saved successfully', hotelDetails})
+    } catch (error) {
+        console.error('Failed to save hotel details:', error)
+        return res.status(500).json({success:false, message:'Unable to save hotel details'})
+    }
+}
+
+export const getHotelDetails = async (req,res) => {
+    const hotelId = req.user?.restaurantId
+    if (!hotelId || !mongoose.isValidObjectId(hotelId)) {
+        return res.status(401).json({success:false, message:'Authentication required'})
+    }
+    try {
+        const hotelDetails = await HotelModel.findOne({hotelId}).select(
+            'name location customerCareNumber hotelEmail'
+        )
+        return res.json({success:true, hotelDetails})
+    } catch (error) {
+        console.error('Failed to get hotel details:', error)
+        return res.status(500).json({success:false, message:'Unable to get hotel details'})
     }
 }

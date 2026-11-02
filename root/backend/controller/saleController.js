@@ -7,15 +7,20 @@ import {
 } from '../services/mpesaService.js'
 
 export const addSale = async (req,res) => {
+    const restaurantId = req.user?.restaurantId
+    const body = req.body ?? {}
+    const {orderId, clientOrderId, productName, price, quantity, items} = body
+
     try{
-        const restaurantId = req.user?.restaurantId
         if(!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)){
             return res.status(401).json({success:false, message:'Authentication required'})
         }
 
-        const {orderId, productName, price, quantity, items} = req.body
         if((items !== undefined && !Array.isArray(items)) ||
-           (orderId !== undefined && !mongoose.Types.ObjectId.isValid(orderId))){
+           (orderId !== undefined && !mongoose.Types.ObjectId.isValid(orderId)) ||
+           (clientOrderId !== undefined &&
+            (typeof clientOrderId !== 'string' ||
+             !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(clientOrderId)))){
             return res.status(400).json({success:false, message:'Please provide a product name, valid price and quantity, and payment method'})
         }
 
@@ -33,7 +38,7 @@ export const addSale = async (req,res) => {
             }))
 
         if(saleItems.length === 0 || saleItems.some(item =>
-            !item.name ||
+            typeof item.name !== 'string' || !item.name.trim() ||
             !Number.isFinite(item.price) || item.price <= 0 ||
             !Number.isInteger(item.quantity) || item.quantity <= 0
         )){
@@ -54,10 +59,48 @@ export const addSale = async (req,res) => {
             ? productName.trim()
             : saleItems.map(item => `${item.name} x ${item.quantity}`).join(', ')
 
+        const saleFilter = clientOrderId
+            ? {hotelId:restaurantId, clientOrderId}
+            : null
+        const existingSale = saleFilter
+            ? await SaleSchema.findOne(saleFilter)
+            : null
+        const payloadMatchesSale = sale => {
+            const existingItems = sale.items.map(item => ({
+                name:item.name,
+                category:item.category ?? null,
+                price:item.price,
+                quantity:item.quantity
+            }))
+            const incomingItems = saleItems.map(item => ({
+                name:item.name,
+                category:item.category ?? null,
+                price:item.price,
+                quantity:item.quantity
+            }))
+            return sale.totalAmount === totalAmount &&
+                JSON.stringify(existingItems) === JSON.stringify(incomingItems)
+        }
+
+        if(existingSale){
+            if(!payloadMatchesSale(existingSale)){
+                return res.status(409).json({
+                    success:false,
+                    message:'This client order ID was already used for a different order'
+                })
+            }
+            return res.status(200).json({
+                success:true,
+                message:'Sale was already synced',
+                sale:existingSale
+            })
+        }
+
         const saleId = new mongoose.Types.ObjectId()
         const newSale = new SaleSchema({
             _id:saleId,
             orderId:orderId || saleId,
+            ...(clientOrderId && {clientOrderId}),
             hotelId: restaurantId,
             productName:saleName,
             price:numericPrice,
@@ -72,6 +115,43 @@ export const addSale = async (req,res) => {
         return res.status(201).json({success:true, message:'Sale added successfully', sale:newSale})
 
     }catch(error){
+        if(error?.code === 11000 && clientOrderId){
+            const existingSale = await SaleSchema.findOne({hotelId:restaurantId, clientOrderId})
+            if(existingSale){
+                const incomingItems = (Array.isArray(items) ? items : [{
+                    name:productName,
+                    price:Number(price),
+                    quantity:Number(quantity)
+                }]).map(item => ({
+                    name:typeof item?.name === 'string' ? item.name.trim() : '',
+                    category:typeof item?.category === 'string' ? item.category : null,
+                    price:Number(item?.price),
+                    quantity:Number(item?.quantity)
+                }))
+                const existingItems = existingSale.items.map(item => ({
+                    name:item.name,
+                    category:item.category ?? null,
+                    price:item.price,
+                    quantity:item.quantity
+                }))
+                const total = Math.round(incomingItems.reduce(
+                    (sum, item) => sum + item.price * item.quantity,
+                    0
+                ))
+                if(existingSale.totalAmount === total &&
+                   JSON.stringify(existingItems) === JSON.stringify(incomingItems)){
+                    return res.status(200).json({
+                        success:true,
+                        message:'Sale was already synced',
+                        sale:existingSale
+                    })
+                }
+                return res.status(409).json({
+                    success:false,
+                    message:'This client order ID was already used for a different order'
+                })
+            }
+        }
         console.error('Error adding sale:', error)
         return res.status(500).json({success:false, message:'Internal server error'})
     }

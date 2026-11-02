@@ -1,100 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createSale } from '../services/salesApi'
-
-const menuItems = [
-  {
-    id: 'beef-burger',
-    name: 'Beef burger',
-    description: 'Grilled beef, lettuce, tomato and house sauce',
-    category: 'Food',
-    price: 650,
-    mark: '🍔',
-    color: 'bg-[#FCF1D0]',
-  },
-  {
-    id: 'chicken-pilau',
-    name: 'Chicken pilau',
-    description: 'Spiced rice served with tender chicken',
-    category: 'Food',
-    price: 550,
-    mark: '🍗',
-    color: 'bg-[#E8EDF2]',
-  },
-  {
-    id: 'ugali-beef',
-    name: 'Ugali & beef stew',
-    description: 'A comforting local favourite with greens',
-    category: 'Food',
-    price: 480,
-    mark: '🍲',
-    color: 'bg-[#FCF1D0]',
-  },
-  {
-    id: 'chips-masala',
-    name: 'Chips masala',
-    description: 'Crispy chips tossed in a tangy masala sauce',
-    category: 'Food',
-    price: 350,
-    mark: '🍟',
-    color: 'bg-[#E8EDF2]',
-  },
-  {
-    id: 'grilled-chicken',
-    name: 'Grilled chicken',
-    description: 'Char-grilled chicken with a side of your choice',
-    category: 'Food',
-    price: 750,
-    mark: '🍗',
-    color: 'bg-[#FCF1D0]',
-  },
-  {
-    id: 'vegetable-wrap',
-    name: 'Vegetable wrap',
-    description: 'Fresh vegetables wrapped with a light dressing',
-    category: 'Food',
-    price: 400,
-    mark: '🌯',
-    color: 'bg-[#E8EDF2]',
-  },
-  {
-    id: 'fresh-juice',
-    name: 'Fresh juice',
-    description: 'Freshly blended seasonal fruit juice',
-    category: 'Drinks',
-    price: 200,
-    mark: '🧃',
-    color: 'bg-[#FCF1D0]',
-  },
-  {
-    id: 'soda',
-    name: 'Soda',
-    description: 'Chilled soft drink',
-    category: 'Drinks',
-    price: 100,
-    mark: '🥤',
-    color: 'bg-[#E8EDF2]',
-  },
-  {
-    id: 'bottled-water',
-    name: 'Bottled water',
-    description: 'Still water, served chilled',
-    category: 'Drinks',
-    price: 80,
-    mark: '💧',
-    color: 'bg-[#FCF1D0]',
-  },
-  {
-    id: 'tea',
-    name: 'Kenyan tea',
-    description: 'Freshly brewed tea with milk',
-    category: 'Drinks',
-    price: 120,
-    mark: '☕',
-    color: 'bg-[#E8EDF2]',
-  },
-]
-
-const categories = ['All items', 'Food', 'Drinks']
+import { getMenuItems } from '../services/menuApi'
+import { saveOrderLocally } from '../services/offlineOrders'
+import { useAuth } from '../context/useAuth'
 
 const formatPrice = (amount) =>
   new Intl.NumberFormat('en-KE', {
@@ -143,12 +51,59 @@ const Icon = ({ name, className = 'size-5' }) => {
 }
 
 const Sale = () => {
+  const { user } = useAuth()
+  const [menuItems, setMenuItems] = useState([])
+  const [menuLoading, setMenuLoading] = useState(true)
+  const [menuError, setMenuError] = useState('')
   const [activeCategory, setActiveCategory] = useState('All items')
   const [searchQuery, setSearchQuery] = useState('')
   const [cart, setCart] = useState([])
   const [latestOrder, setLatestOrder] = useState(null)
   const [orderError, setOrderError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    let active = true
+
+    const loadMenu = () => getMenuItems(user?.restaurantId)
+      .then((items) => {
+        if (active) {
+          setMenuError('')
+          setMenuItems(
+            items
+              .filter((item) => item.isAvailable !== false)
+              .map((item) => ({ ...item, id: item._id })),
+          )
+        }
+      })
+      .catch((error) => {
+        if (active) setMenuError(error.message)
+      })
+      .finally(() => {
+        if (active) setMenuLoading(false)
+      })
+
+    const updateNetworkStatus = () => {
+      setIsOnline(navigator.onLine)
+      if (navigator.onLine) loadMenu()
+    }
+
+    window.addEventListener('online', updateNetworkStatus)
+    window.addEventListener('offline', updateNetworkStatus)
+    loadMenu()
+
+    return () => {
+      active = false
+      window.removeEventListener('online', updateNetworkStatus)
+      window.removeEventListener('offline', updateNetworkStatus)
+    }
+  }, [user?.restaurantId])
+
+  const categories = useMemo(
+    () => ['All items', ...new Set(menuItems.map((item) => item.category))],
+    [menuItems],
+  )
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
@@ -159,11 +114,11 @@ const Sale = () => {
       const matchesSearch =
         !query ||
         item.name.toLowerCase().includes(query) ||
-        item.description.toLowerCase().includes(query)
+        item.category.toLowerCase().includes(query)
 
       return matchesCategory && matchesSearch
     })
-  }, [activeCategory, searchQuery])
+  }, [activeCategory, menuItems, searchQuery])
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
   const orderTotal = cart.reduce(
@@ -206,28 +161,62 @@ const Sale = () => {
   const createOrder = async () => {
     if (cart.length === 0 || isSubmitting) return
     setIsSubmitting(true)
-    
-    try {
-      const response = await createSale({
-        productName: `${cart.length} item${cart.length === 1 ? '' : 's'}`,
-        price: orderTotal,
-        quantity: 1,
-        items: cart.map(({ name, category, price, quantity }) => ({
-          name,
-          category,
-          price,
-          quantity,
-        })),
+    setOrderError('')
+
+    const localOrder = {
+      clientOrderId: crypto.randomUUID(),
+      restaurantId: user.restaurantId,
+      productName: `${cart.length} item${cart.length === 1 ? '' : 's'}`,
+      price: orderTotal,
+      quantity: 1,
+      createdAt: new Date().toISOString(),
+      items: cart.map(({ name, category, price, quantity }) => ({
+        name,
+        category,
+        price,
+        quantity,
+      })),
+      totalAmount: orderTotal,
+      paymentStatus: 'pending',
+      syncStatus: 'waiting',
+    }
+
+    const saveOffline = async () => {
+      await saveOrderLocally(localOrder)
+      setLatestOrder({
+        id: localOrder.clientOrderId,
+        total: localOrder.totalAmount,
+        createdAt: localOrder.createdAt,
+        isLocal: true,
       })
+      setCart([])
+    }
+
+    try {
+      if (!navigator.onLine) {
+        await saveOffline()
+        return
+      }
+
+      let response
+      try {
+        response = await createSale(localOrder)
+      } catch (error) {
+        if (error.code !== 'NETWORK_ERROR') throw error
+        await saveOffline()
+        return
+      }
+
       const sale = response.sale
       setLatestOrder({
         id: sale.orderId || sale._id,
         total: sale.totalAmount,
         createdAt: sale.createdAt,
       })
+      setOrderError('')
       setCart([])
     } catch (error) {
-      console.error('Unable to create sale:', error)
+      console.error('Unable to create or save sale:', error)
       if (error.data?.sale) {
         const sale = error.data.sale
         setLatestOrder({
@@ -238,7 +227,7 @@ const Sale = () => {
         })
         setCart([])
       }
-      setOrderError(error.message || 'The sale could not be created. Try again.')
+      setOrderError(error.message || 'The sale could not be created or saved.')
     } finally {
       setIsSubmitting(false)
     }
@@ -267,12 +256,14 @@ const Sale = () => {
         </div>
       </header>
 
-      <div
-        role="note"
-        className="rounded-xl border border-[#22396F]/15 bg-[#FCF1D0] px-4 py-3 text-sm leading-5 text-black/75"
-      >
-        Menu items are currently sample data. New sales are saved to the backend.
-      </div>
+      {!isOnline && (
+        <p
+          role="status"
+          className="rounded-xl border border-amber-700/20 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+        >
+          Offline mode: showing the last menu saved on this device. New orders will sync when the connection returns.
+        </p>
+      )}
 
       {latestOrder && (
         <section
@@ -287,6 +278,8 @@ const Sale = () => {
               <p className="font-bold text-black">
                 {latestOrder.paymentIssue
                   ? 'Sale saved, but payment setup needs attention'
+                  : latestOrder.isLocal
+                    ? 'Order saved on this device'
                   : 'Sale created'}
               </p>
               <p className="mt-1 text-sm text-black/65">
@@ -297,7 +290,9 @@ const Sale = () => {
                 }).format(new Date(latestOrder.createdAt))}
               </p>
               <p className="mt-1 text-sm text-black/65">
-                Order saved as pending. Choose cash, M-Pesa Till, or an M-Pesa prompt from the Orders page when the customer is ready to pay.
+                {latestOrder.isLocal
+                  ? 'Waiting to sync. Payment options will be available after the connection returns.'
+                  : 'Order saved as pending. Choose cash, M-Pesa Till, or an M-Pesa prompt from the Orders page when the customer is ready to pay.'}
               </p>
             </div>
           </div>
@@ -372,11 +367,22 @@ const Sale = () => {
             </div>
           </div>
 
-          {filteredItems.length > 0 ? (
+          {menuError ? (
+            <p
+              role="alert"
+              className="rounded-xl border border-red-700/20 bg-red-50 px-4 py-3 text-sm font-medium text-red-900"
+            >
+              {menuError}
+            </p>
+          ) : menuLoading ? (
+            <p role="status" className="rounded-2xl border border-black/10 bg-white px-4 py-12 text-center text-sm text-black/60">
+              Loading menu…
+            </p>
+          ) : filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredItems.map((item) => (
+              {filteredItems.map((item, index) => (
                 <button
-                  key={item.id}
+                  key={item._id}
                   type="button"
                   onClick={() => addToCart(item)}
                   aria-label={`Add ${item.name}, ${formatPrice(item.price)}, to order`}
@@ -384,9 +390,11 @@ const Sale = () => {
                 >
                   <span
                     aria-hidden="true"
-                    className={`grid size-16 shrink-0 place-items-center rounded-xl text-3xl ${item.color}`}
+                    className={`grid size-16 shrink-0 place-items-center rounded-xl text-xl font-bold ${
+                      index % 2 === 0 ? 'bg-[#FCF1D0]' : 'bg-[#E8EDF2]'
+                    }`}
                   >
-                    {item.mark}
+                    {item.category.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start justify-between gap-2">
@@ -396,7 +404,7 @@ const Sale = () => {
                       </span>
                     </span>
                     <span className="mt-1.5 line-clamp-2 block text-xs leading-5 text-black/55">
-                      {item.description}
+                      {item.category}
                     </span>
                     <span className="mt-2 block text-sm font-bold text-[#22396F]">
                       {formatPrice(item.price)}
@@ -407,9 +415,13 @@ const Sale = () => {
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-black/20 bg-white px-4 py-12 text-center">
-              <p className="font-semibold">No menu items found</p>
+              <p className="font-semibold">
+                {menuItems.length === 0 ? 'No available menu items' : 'No menu items found'}
+              </p>
               <p className="mt-1 text-sm text-black/55">
-                Try another search or choose a different category.
+                {menuItems.length === 0
+                  ? 'Ask your administrator to add available items to the menu.'
+                  : 'Try another search or choose a different category.'}
               </p>
             </div>
           )}

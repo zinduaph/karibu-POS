@@ -1,8 +1,73 @@
- import {User} from 'lucide-react'
+ import { useEffect, useState } from 'react'
+ import { User, XCircle } from 'lucide-react'
+ import { useAuth } from '../context/useAuth'
+ import { getHotelDetails, saveHotelDetails } from '../services/hotelApi'
 
-function Settings() {
-    
-  return (
+ function Settings() {
+   const { accessToken, user } = useAuth()
+   const [form, setForm] = useState({
+     name: '',
+     location: '',
+     customerCareNumber: '',
+     hotelEmail: '',
+   })
+   const [loading, setLoading] = useState(true)
+   const [saving, setSaving] = useState(false)
+   const [error, setError] = useState('')
+   const [success, setSuccess] = useState('')
+   const [passwordmodul, setPasswordModul] = useState(false)
+
+   useEffect(() => {
+     let active = true
+     getHotelDetails(accessToken)
+       .then((details) => {
+         if (active && details) {
+           setForm({
+             name: details.name || '',
+             location: details.location || '',
+             customerCareNumber: details.customerCareNumber || '',
+             hotelEmail: details.hotelEmail || '',
+           })
+         }
+       })
+       .catch((requestError) => {
+         if (active) setError(requestError.message)
+       })
+       .finally(() => {
+         if (active) setLoading(false)
+       })
+     return () => {
+       active = false
+     }
+   }, [accessToken])
+
+   function updateField(event) {
+     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+   }
+
+   async function handleSubmit(event) {
+     event.preventDefault()
+     setError('')
+     setSuccess('')
+     setSaving(true)
+     try {
+       const details = await saveHotelDetails(accessToken, form)
+       setForm({
+         name: details.name,
+         location: details.location,
+         customerCareNumber: details.customerCareNumber,
+         hotelEmail: details.hotelEmail || '',
+       })
+       setSuccess('Hotel details saved.')
+     } catch (requestError) {
+       setError(requestError.message)
+     } finally {
+       setSaving(false)
+     }
+   }
+   
+
+   return (
     <div className="space-y-6">
       <header>
         <p className="text-sm font-semibold text-[#547A95]">ADMIN WORKSPACE</p>
@@ -13,28 +78,48 @@ function Settings() {
       <section className="">
        <div className='bg-white p-6 rounded-md flex justify-between'>
          <div className="">
-            <h1 className="text-2xl font-semibold">Add your Hotel Details</h1>
-            <form action="" className="flex flex-col mt-6">
-                <label className="text-[#547A95] font-semibold" >Hotel Name</label>
-                <input className=" border border-gray-700 p-1 rounded-md w-50" type="text" required id="" />
+            <h2 className="text-2xl font-semibold">Hotel details</h2>
+            <form className="mt-6 flex flex-col" onSubmit={handleSubmit}>
+                <label htmlFor="hotel-name" className="text-[#547A95] font-semibold">Hotel Name</label>
+                <input id="hotel-name" name="name" value={form.name} onChange={updateField} className="w-64 rounded-md border border-gray-700 p-2" type="text" required disabled={loading} />
 
-                <label htmlFor="" className="mt-4 text-[#547A95] font-semibold">Location</label>
-                <input type="text" className=" border border-gray-700 p-1 rounded-md w-50" required  />
+                <label htmlFor="hotel-location" className="mt-4 text-[#547A95] font-semibold">Location</label>
+                <input id="hotel-location" name="location" value={form.location} onChange={updateField} type="text" className="w-64 rounded-md border border-gray-700 p-2" required disabled={loading} />
 
-                <label htmlFor="" className="mt-4 text-[#547A95] font-semibold">customer care Number</label>
-                <input type="number" className="border border-gray-700 p-1 rounded-md w-50" required />
+                <label htmlFor="customer-care-number" className="mt-4 text-[#547A95] font-semibold">Customer care number</label>
+                <input id="customer-care-number" name="customerCareNumber" value={form.customerCareNumber} onChange={updateField} type="tel" className="w-64 rounded-md border border-gray-700 p-2" required disabled={loading} />
 
-                <label htmlFor="" className="mt-4 text-[#547A95] font-semibold">Hotel email</label>
-                <input type="text" placeholder="(this filed is optional)" className="border border-gray-700 p-1 rounded-md w-50" />
+                <label htmlFor="hotel-email" className="mt-4 text-[#547A95] font-semibold">Hotel email</label>
+                <input id="hotel-email" name="hotelEmail" value={form.hotelEmail} onChange={updateField} type="email" placeholder="Optional" className="w-64 rounded-md border border-gray-700 p-2" disabled={loading} />
+                {error && <p className="mt-4 text-sm text-red-700" role="alert">{error}</p>}
+                {success && <p className="mt-4 text-sm text-green-700" role="status">{success}</p>}
+                <button type="submit" disabled={loading || saving} className="mt-6 w-28 rounded-md bg-black p-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50">
+                  {loading ? 'Loading…' : saving ? 'Saving…' : 'Save'}
+                </button>
             </form>
-            <button className="bg-black text-white p-2 rounded-md w-20 m-auto ml-30 hover:bg-gray-500 cursor-pointer mt-6">Save</button>
          </div>
 
          <div>
             
             <h1 className='text-2xl font-semibold'>Admin profile</h1>
              <div className='m-auto mt-3 flex justify-center'><User size={38}/></div>
+             <p className="mt-3 text-center font-medium text-[#2C3947]">{user?.name}</p>
+             <p className="mt-1 text-center text-sm text-slate-500">{user?.email}</p>
+             <button onClick={() => setPasswordModul(true)} className='bg-black text-white p-2 rounded-md mt-3'>change Password</button>
          </div>
+
+         {passwordmodul && (
+          <>
+          <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+          <div>
+            <button onClick={() => setPasswordModul(false)}>< XCircle text-black size={27}/></button>
+          </div>
+
+          </div>
+          </>
+         )}
+
+         
 
        </div>
       </section>
