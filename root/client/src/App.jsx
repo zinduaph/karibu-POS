@@ -1,46 +1,86 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import './App.css'
-import Dashboard from './pages/dashboard'
-import DashboardHome from './pages/dashboardHome'
+import { Navigate, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
-import Orders from './pages/orders'
+import DashboardHome from './pages/dashboardHome'
+import Dashboard from './pages/dashboard'
 import Sale from './pages/sale'
-import Login from './pages/login'
-import ChangePin from './pages/changePin'
-import { AuthProvider } from './context/AuthContext'
-import { useAuth } from './context/useAuth'
+import Orders from './pages/orders'
+import AdminDashboard from './pages/adminDashboard'
+import AdminLoginPage from './pages/adminLogin'
+import AdminRegistrationPage from './pages/adminreg'
+import CashierRegistrationPage from './pages/cashierreg'
+import CashierLoginPage from './pages/login'
+import CashierPinChangePage from './pages/changePin'
+import ChangePasswordPage from './pages/changePassword'
+import OnboardingPage from './pages/onboarding'
+import { Toaster } from 'react-hot-toast'
+
+// Role protection is now handled by the backend (auth middleware).
+// These helper functions check localStorage for UX guidance only.
+
+function getUser() {
+  let user = null
+  try {
+    user = JSON.parse(window.localStorage.getItem('user') || 'null')
+  } catch {
+    window.localStorage.removeItem('user')
+  }
+  return user
+}
+
+function checkRole(role) {
+  const user = getUser()
+  return user && user.role === role
+}
+
+function isAuthenticated() {
+  return !!getUser()
+}
+
+function mustChangePin() {
+  const user = getUser()
+  return user && user.role === 'cashier' && user.mustChangePin === true
+}
 
 function App() {
   return (
-    <AuthProvider>
+    <>
+      <Toaster />
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/change-pin" element={<ChangePin />} />
-        <Route path="/dashboard" element={<CashierRoute><Dashboard /></CashierRoute>}>
-          <Route index element={<Navigate to="home" replace />} />
-          <Route path="home" element={<DashboardHome />} />
-          <Route path="sale" element={<Sale />} />
-          <Route path="orders" element={<Orders />} />
+        <Route path='/' element={<Home />} />
+        <Route path='/login' element={<CashierLoginPage />} />
+        <Route path='/admin/login' element={<AdminLoginPage />} />
+        <Route path='/admin/register' element={<AdminRegistrationPage />} />
+        <Route path='/cashier/register' element={<CashierRegistrationPage />} />
+        <Route path='/change-pin' element={checkRole('cashier') ? <CashierPinChangePage /> : <Navigate to="/login" replace />} />
+        <Route path='/change-password' element={checkRole('admin') ? <ChangePasswordPage /> : <Navigate to="/admin/login" replace />} />
+        <Route path='/onboarding' element={isAuthenticated() ? <OnboardingPage /> : <Navigate to="/login" replace />} />
+        <Route
+          path='/admin'
+          element={checkRole('admin') ? <AdminDashboard /> : <Navigate to="/admin/login" replace />}
+        />
+        <Route
+          path='/admin/dashboard'
+          element={checkRole('admin') ? <AdminDashboard /> : <Navigate to="/admin/login" replace />}
+        />
+        <Route
+          path='/dashboard'
+          element={
+            checkRole('cashier') && mustChangePin()
+              ? <Navigate to="/change-pin" replace />
+              : checkRole('cashier')
+                ? <Dashboard />
+                : <Navigate to="/login" replace />
+          }
+        >
+          <Route index element={<DashboardHome />} />
+          <Route path='home' element={<DashboardHome />} />
+          <Route path='sale' element={<Sale />} />
+          <Route path='orders' element={<Orders />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path='*' element={<Home />} />
       </Routes>
-    </AuthProvider>
+    </>
   )
-}
-
-function CashierRoute({ children }) {
-  const { loading, user } = useAuth()
-  const location = useLocation()
-
-  if (loading) {
-    return <main className="grid min-h-screen place-items-center text-sm text-slate-600">Checking your session…</main>
-  }
-  if (!user || user.role !== 'cashier') {
-    return <Navigate replace to="/login" state={{ from: location }} />
-  }
-  if (user.mustChangePin) return <Navigate replace to="/change-pin" />
-  return children
 }
 
 export default App

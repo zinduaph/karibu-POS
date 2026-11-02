@@ -40,12 +40,24 @@ const Navbar = () => {
               {label}
             </a>
           ))}
+          <a
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/register`}
+            className="rounded-xl bg-[#22396F] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22396F]"
+          >
+            Register admin
+          </a>
           <Link
             to="/login"
-            className="rounded-xl bg-[#22396F] px-4 py-2.5 text-sm font-semibold text-[#FCF1D0] transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
+            className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
           >
             Cashier sign in
           </Link>
+          <a
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
+            className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
+          >
+            Admin sign in
+          </a>
         </div>
 
         <button
@@ -81,6 +93,13 @@ const Navbar = () => {
               {label}
             </a>
           ))}
+          <a
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/register`}
+            className="rounded-lg px-4 py-3 font-semibold text-[#22396F] transition-colors hover:bg-[#22396F]/10 focus-visible:outline-2 focus-visible:outline-[#22396F]"
+            onClick={() => setMenuOpen(false)}
+          >
+            Register admin
+          </a>
           <Link
             to="/login"
             className="rounded-lg px-4 py-3 font-semibold text-[#22396F] transition-colors hover:bg-[#22396F]/10 focus-visible:outline-2 focus-visible:outline-[#22396F]"
@@ -88,6 +107,13 @@ const Navbar = () => {
           >
             Cashier sign in
           </Link>
+          <a
+            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
+            className="rounded-lg px-4 py-3 font-semibold text-[#22396F] transition-colors hover:bg-[#22396F]/10 focus-visible:outline-2 focus-visible:outline-[#22396F]"
+            onClick={() => setMenuOpen(false)}
+          >
+            Admin sign in
+          </a>
         </div>
       </nav>
     </header>

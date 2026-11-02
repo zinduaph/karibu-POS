@@ -8,6 +8,8 @@ import { useAuth } from './context/useAuth'
 import Ingredients from './pages/ingredients'
 import MenuItems from './pages/menuitems'
 import Orders from './pages/orders'
+import Pricing from './pages/pricing'
+import BillingCallback from './pages/billingCallback'
 import Reports from './pages/reports'
 import Sales from './pages/sales'
 import Settings from './pages/settings'
@@ -20,7 +22,8 @@ function RequireAuth({ children }) {
   if (loading) {
     return <div className="grid min-h-screen place-items-center text-sm text-slate-600">Checking your session…</div>
   }
-  return user ? children : <Navigate replace to="/login" />
+  if (!user) return <Navigate replace to="/login" />
+  return children
 }
 
 function App() {
@@ -46,8 +49,10 @@ function App() {
             <Route element={<Ingredients />} path="ingredients" />
             <Route element={<Staff />} path="staff" />
             <Route element={<Reports />} path="reports" />
+            <Route element={<Pricing />} path="pricing" />
             <Route element={<Settings />} path="settings" />
           </Route>
+          <Route element={<BillingCallback />} path="/billing/callback" />
           <Route element={<Navigate replace to="/dashboard/home" />} path="*" />
         </Routes>
       </BrowserRouter>

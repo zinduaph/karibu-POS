@@ -1,7 +1,6 @@
+
 import { z } from 'zod';
 import { isWeakPin } from '../utils/credentials.js';
-
-const cashierPin = z.string().regex(/^\d{6}$/).refine((pin) => !isWeakPin(pin));
 
 export const adminRegister = z.object({
   name: z.string().trim().min(1).max(100),
@@ -10,15 +9,17 @@ export const adminRegister = z.object({
   restaurantName: z.string().trim().min(1).max(120),
 });
 
-export const cashierRegister = z.object({
-  name: z.string().trim().min(1).max(100),
-  username: z.string().trim().toLowerCase().min(1).max(40),
-  pin: cashierPin,
-});
-
 export const adminLogin = z.object({
   email: z.string().email().max(254).transform((s) => s.trim().toLowerCase()),
   password: z.string().min(1).max(200),
+});
+
+export const cashierRegister = z.object({
+  name: z.string().trim().min(1).max(100),
+  username: z.string().min(1).max(40).transform((s) => s.trim().toLowerCase()),
+  pin: z.string().min(4).max(20).refine((pin) => !isWeakPin(pin), {
+    message: 'PIN is too common or too weak. Choose another one.',
+  }),
 });
 
 export const cashierLogin = z.object({

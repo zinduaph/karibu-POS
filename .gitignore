@@ -1,3 +1,11 @@
 .env
 node_modules/
+
 .kilo/plans/onboarding-plan.md
+.kilo/plans/auth-fix-plan.md
+.kilo/plans/1793204287805-split-cashier-admin-schemas.md
+.kilo/plans/1793271896850-admin-reports-page.md
+.kilo/plans/1793269315124-admin-onboarding-plan.md
+.kilo/plans/1793255131757-cashier-onboarding-plan.md
+.kilo/plans/1793301670902-paystack-stk-push.md
+.kilo/plans/1793300000000-admin-onboarding-fix-plan.md

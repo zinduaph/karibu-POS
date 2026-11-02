@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AuthApiError, authRequest } from '../services/authApi'
+import { AuthApiError, authRequest, getStoredToken } from '../services/authApi'
 import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }) {
@@ -11,28 +11,36 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true
-    if (!refreshRequest.current) {
+    const hasStoredToken = Boolean(getStoredToken())
+
+    if (!refreshRequest.current && hasStoredToken) {
       refreshRequest.current = authRequest('/refresh', { method: 'POST' })
         .finally(() => {
           refreshRequest.current = null
         })
     }
 
-    refreshRequest.current
-      .then((session) => {
-        if (active) {
-          setUser(session.user)
-          setAccessToken(session.accessToken)
-        }
-      })
-      .catch((error) => {
-        if (active && !(error instanceof AuthApiError && error.status === 401)) {
-          setSessionError(error.message)
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+    if (refreshRequest.current) {
+      refreshRequest.current
+        .then((session) => {
+          if (active) {
+            setUser(session.user)
+            setAccessToken(session.accessToken)
+          }
+        })
+        .catch((error) => {
+          if (active) {
+            if (!(error instanceof AuthApiError && error.status === 401)) {
+              setSessionError(error.message)
+            }
+          }
+        })
+        .finally(() => {
+          if (active) setLoading(false)
+        })
+    } else {
+      setLoading(false)
+    }
 
     return () => {
       active = false

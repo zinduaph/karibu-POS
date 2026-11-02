@@ -1,9 +1,20 @@
 # Karibu POS client
 
-Start the backend from `root/backend` with `npm run dev`, then start this
-client from `root/client` with `npm run dev`. The client sends API requests
-directly to `VITE_BACKEND_URL` (default: `http://localhost:8000`) and appends
-`/api`.
+Start the backend from the repository root with `npm run dev`, then start the
+cashier client from `root/client` with `npm run dev` and the admin app from
+`root/admin` with `npm run dev`. The cashier client runs on port `5173` and
+the admin app on port `5174` by default. The API listens on port `5000` by
+default, and both frontends use `VITE_BACKEND_URL` (default:
+`http://localhost:5000`) and append `/api`.
+
+The API allows the local frontend origins on ports `5173` and `5174` by
+default. Set the backend's `CORS_ORIGINS` environment variable to a
+comma-separated list of frontend origins when deploying from other domains.
+
+Cashiers sign in at `/login` with their restaurant code, username, and PIN.
+Their first sign-in requires changing the temporary PIN. Admins sign in at
+`/login` in the admin app; the home page and admin registration page link to
+the appropriate sign-in page.
 
 Sales and order management use the backend API. Set `VITE_BACKEND_URL` when
 the backend is hosted at a different URL (for example,

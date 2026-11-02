@@ -1,143 +1,214 @@
 import { useState } from 'react'
-import { Link, Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '../context/useAuth'
+import { Link, useNavigate } from 'react-router-dom'
+import { cashierLogin, adminLogin } from '../services/authApi'
 
-function Login() {
-  const { login, loading, sessionError, user } = useAuth()
-  const location = useLocation()
-  const [restaurantCode, setRestaurantCode] = useState('')
-  const [username, setUsername] = useState('')
-  const [pin, setPin] = useState('')
+const LoginPage = () => {
+  const navigate = useNavigate()
+  const [form, setForm] = useState({
+    role: 'cashier', // or 'admin'
+    restaurantCode: '',
+    username: '',
+    pin: '',
+    email: '',
+    password: '',
+  })
   const [error, setError] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (loading) {
-    return <AuthMessage>Checking your session…</AuthMessage>
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setForm((currentForm) => ({ ...currentForm, [name]: value }))
   }
 
-  if (user?.role === 'cashier') {
-    return <Navigate replace to={user.mustChangePin ? '/change-pin' : '/dashboard'} />
-  }
-
-  async function handleSubmit(event) {
+  const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
-    setSubmitting(true)
+    setIsSubmitting(true)
 
     try {
-      await login({
-        restaurantCode: restaurantCode.trim().toUpperCase(),
-        username: username.trim().toLowerCase(),
-        pin,
-      })
-    } catch (requestError) {
-      setError(requestError.message)
+      let response
+      if (form.role === 'admin') {
+        response = await adminLogin({ email: form.email, password: form.password })
+      } else {
+        response = await cashierLogin({
+          restaurantCode: form.restaurantCode,
+          username: form.username,
+          pin: form.pin,
+        })
+      }
+      
+      // Redirect based on role and mustChangePin/mustChangePassword
+      if (response.user?.mustChangePin) {
+        navigate('/change-pin', { replace: true })
+      } else if (response.user?.mustChangePassword) {
+        navigate('/change-password', { replace: true })
+      } else if (form.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate('/dashboard/home', { replace: true })
+      }
+    } catch (loginError) {
+      setError(loginError.message || 'Unable to sign in. Check your details and try again.')
     } finally {
-      setSubmitting(false)
+      setIsSubmitting(false)
     }
   }
 
   return (
-    <AuthLayout>
-      {location.state?.notice && (
-        <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900" role="status">
-          {location.state.notice}
-        </p>
-      )}
-      {sessionError && (
-        <p className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900" role="status">
-          Could not restore your previous session: {sessionError}
-        </p>
-      )}
-      <div className="mb-7">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#547A95]">Cashier access</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#22396F]">Welcome back</h1>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
-          Sign in with the account details provided by your restaurant administrator.
-        </p>
-      </div>
-
-      <form className="space-y-4" onSubmit={handleSubmit}>
-        <label className="block text-sm font-medium text-[#2C3947]">
-          Restaurant code
-          <input
-            autoComplete="organization"
-            className={inputClass}
-            maxLength={20}
-            onChange={(event) => setRestaurantCode(event.target.value)}
-            required
-            value={restaurantCode}
-          />
-        </label>
-        <label className="block text-sm font-medium text-[#2C3947]">
-          Username
-          <input
-            autoComplete="username"
-            className={inputClass}
-            maxLength={40}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            value={username}
-          />
-        </label>
-        <label className="block text-sm font-medium text-[#2C3947]">
-          PIN
-          <input
-            autoComplete="current-password"
-            className={inputClass}
-            maxLength={20}
-            onChange={(event) => setPin(event.target.value)}
-            required
-            type="password"
-            value={pin}
-          />
-        </label>
-        {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-        <button
-          className="w-full rounded-xl bg-[#22396F] px-4 py-3 font-semibold text-white transition hover:bg-[#192b55] disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={submitting}
-          type="submit"
-        >
-          {submitting ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-
-      <p className="mt-6 text-center text-sm leading-6 text-slate-600">
-        Need an account? Cashier accounts are created by your restaurant administrator.
-      </p>
-      <Link className="mt-5 block text-center text-sm font-semibold text-[#547A95] hover:underline" to="/">
-        Back to home
-      </Link>
-    </AuthLayout>
-  )
-}
-
-const inputClass =
-  'mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-3 outline-none transition focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20'
-
-function AuthLayout({ children }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-[#F3F6F8] px-4 py-10 text-[#2C3947]">
-      <section className="w-full max-w-md rounded-2xl border border-[#547A95]/15 bg-white p-6 shadow-sm sm:p-8">
-        <Link className="mb-8 flex items-center gap-3" to="/" aria-label="Karibu POS home">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#22396F] text-lg font-bold text-[#FCF1D0]">K</span>
-          <span>
-            <span className="block font-bold tracking-tight text-[#22396F]">Karibu POS</span>
-            <span className="block text-xs font-medium text-[#547A95]">Cashier</span>
-          </span>
+    <main className="grid min-h-screen place-items-center bg-[#FCF1D0] px-4 py-10 text-black">
+      <section className="w-full max-w-md rounded-3xl border border-[#22396F]/10 bg-white p-6 shadow-xl sm:p-8">
+        <Link to="/" className="text-sm font-semibold text-[#22396F] hover:underline">
+          Karibu POS
         </Link>
-        {children}
+        
+        {/* Role Toggle */}
+        <div className="mb-4 role-toggle">
+          <button
+            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
+              form.role === 'cashier' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
+            }`}
+            onClick={() => setForm((f) => ({ ...f, role: 'cashier' }))}
+          >
+            Cashier
+          </button>
+          <button
+            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
+              form.role === 'admin' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
+            }`}
+            onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
+          >
+            Admin
+          </button>
+        </div>
+
+        <h1 className="mt-5 text-3xl font-bold tracking-tight">
+          {form.role === 'cashier' ? 'Cashier sign in' : 'Admin sign in'}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-black/60">
+          {form.role === 'cashier'
+            ? 'Enter your restaurant code, username, and PIN to open the POS.'
+            : 'Enter your email and password to access the administration panel.'}
+        </p>
+
+        {error && (
+          <p role="alert" className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {error}
+          </p>
+        )}
+
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          {form.role === 'cashier' && (
+            <>
+              <label className="block text-sm font-semibold">
+                Restaurant code
+                <input
+                  autoComplete="organization"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={20}
+                  name="restaurantCode"
+                  onChange={handleChange}
+                  placeholder="KRB-XXXXXXXX"
+                  required
+                  value={form.restaurantCode}
+                />
+              </label>
+
+              <label className="block text-sm font-semibold">
+                Username
+                <input
+                  autoComplete="username"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={40}
+                  name="username"
+                  onChange={handleChange}
+                  required
+                  value={form.username}
+                />
+              </label>
+
+              <label className="block text-sm font-semibold">
+                PIN
+                <input
+                  autoComplete="current-password"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  inputMode="numeric"
+                  maxLength={20}
+                  name="pin"
+                  onChange={handleChange}
+                  required
+                  type="password"
+                  value={form.pin}
+                />
+              </label>
+            </>
+          )}
+
+          {form.role === 'admin' && (
+            <>
+              <label className="block text-sm font-semibold">
+                Email
+                <input
+                  autoComplete="email"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={254}
+                  name="email"
+                  onChange={handleChange}
+                  required
+                  value={form.email}
+                />
+              </label>
+
+              <label className="block text-sm font-semibold">
+                Password
+                <input
+                  autoComplete="current-password"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-black/15 px-3 py-2 text-sm outline-none focus:border-[#22396F]"
+                  maxLength={200}
+                  name="password"
+                  onChange={handleChange}
+                  required
+                  type="password"
+                  value={form.password}
+                />
+              </label>
+            </>
+          )}
+
+          <button
+            className="min-h-12 w-full rounded-xl bg-[#22396F] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#192b55] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? 'Signing in…' : `${form.role === 'cashier' ? 'Sign in to POS' : 'Sign in to Administration'}`}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-black/60">
+          {form.role === 'cashier' ? (
+            <span>
+              Admin?{' '}
+              <a
+                className="font-semibold text-[#22396F] hover:underline"
+                href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
+              >
+                Sign in to administration
+              </a>
+            </span>
+          ) : (
+            <span>
+              Cashier?{' '}
+              <a
+                className="font-semibold text-[#22396F] hover:underline"
+                onClick={() => setForm((f) => ({ ...f, role: 'cashier' }))}
+              >
+                Sign in to POS
+              </a>
+            </span>
+          )}
+        </p>
       </section>
     </main>
   )
 }
 
-function AuthMessage({ children }) {
-  return (
-    <main className="grid min-h-screen place-items-center bg-[#F3F6F8] px-4 text-sm text-slate-600">
-      {children}
-    </main>
-  )
-}
-
-export default Login
+export default LoginPage

@@ -1,5 +1,25 @@
 import { authApiUrl } from '../config'
 
+const STORAGE_KEY_TOKEN = 'karibu_access_token';
+const STORAGE_KEY_RESTAURANT = 'karibu_restaurant';
+
+export function getStoredToken() {
+  try {
+    return localStorage.getItem(STORAGE_KEY_TOKEN);
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredRestaurant() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_RESTAURANT);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export class AuthApiError extends Error {
   constructor(message, status) {
     super(message)
