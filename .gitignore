@@ -1,6 +1,6 @@
 .env
 node_modules/
-root/backend/
+
 .kilo/plans/onboarding-plan.md
 .kilo/plans/auth-fix-plan.md
 .kilo/plans/1793204287805-split-cashier-admin-schemas.md
