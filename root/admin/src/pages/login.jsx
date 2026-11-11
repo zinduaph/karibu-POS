@@ -11,7 +11,7 @@ function LoginPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  if (loading) return <AuthLayout title="Sign in to Karibu POS">Checking your session…</AuthLayout>
+  if (loading) return <AuthLayout title="Sign in to Qick Sale">Checking your session…</AuthLayout>
   if (user) return <Navigate replace to="/dashboard/home" />
 
   async function handleSubmit(event) {
@@ -77,7 +77,7 @@ function LoginPage() {
         </button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
-        New to Karibu POS? <Link className="font-semibold text-[#547A95] hover:underline" to="/signup">Create an admin account</Link>
+        New to Qick Sale? <Link className="font-semibold text-[#547A95] hover:underline" to="/signup">Create an admin account</Link>
       </p>
     </AuthLayout>
   )

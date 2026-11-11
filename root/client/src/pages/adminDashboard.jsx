@@ -7,7 +7,7 @@ const AdminDashboard = () => {
       <section className="mx-auto max-w-5xl rounded-2xl bg-white p-8 shadow-sm">
         <h1 className="text-3xl font-bold text-[#22396F]">Administration dashboard</h1>
         <p className="mt-3 text-sm text-black/60">
-          You are signed in to the Karibu POS administration panel.
+          You are signed in to the Qick Sale administration panel.
         </p>
       </section>
     </main>

@@ -58,6 +58,7 @@ const Sale = () => {
   const [activeCategory, setActiveCategory] = useState('All items')
   const [searchQuery, setSearchQuery] = useState('')
   const [cart, setCart] = useState([])
+  const [vatEnabled, setVatEnabled] = useState(false)
   const [latestOrder, setLatestOrder] = useState(null)
   const [orderError, setOrderError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -121,10 +122,12 @@ const Sale = () => {
   }, [activeCategory, menuItems, searchQuery])
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
-  const orderTotal = cart.reduce(
+  const subtotal = Math.round(cart.reduce(
     (total, item) => total + item.price * item.quantity,
     0,
-  )
+  ))
+  const vatAmount = vatEnabled ? Math.round(subtotal * 0.16) : 0
+  const orderTotal = subtotal + vatAmount
 
   const addToCart = (menuItem) => {
     setLatestOrder(null)
@@ -170,13 +173,18 @@ const Sale = () => {
       price: orderTotal,
       quantity: 1,
       createdAt: new Date().toISOString(),
-      items: cart.map(({ name, category, price, quantity }) => ({
+      items: cart.map(({ id, name, category, price, quantity }) => ({
+        menuItemId: id,
         name,
         category,
         price,
         quantity,
       })),
       totalAmount: orderTotal,
+      vatEnabled,
+      subtotalAmount: subtotal,
+      vatRate: vatEnabled ? 0.16 : 0,
+      vatAmount,
       paymentStatus: 'pending',
       syncStatus: 'waiting',
     }
@@ -509,6 +517,27 @@ const Sale = () => {
           )}
 
           <div className="border-t border-black/10 bg-[#E8EDF2]/40 px-5 py-4">
+            <label className="mb-4 flex cursor-pointer items-center gap-2 text-sm font-medium">
+              <input
+                checked={vatEnabled}
+                className="size-4 accent-[#22396F]"
+                onChange={(event) => setVatEnabled(event.target.checked)}
+                type="checkbox"
+              />
+              Add VAT (16%)
+            </label>
+            <div className="mb-3 space-y-1.5 text-sm">
+              <div className="flex items-center justify-between text-black/65">
+                <span>Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              {vatEnabled && (
+                <div className="flex items-center justify-between text-black/65">
+                  <span>VAT (16%)</span>
+                  <span>{formatPrice(vatAmount)}</span>
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-black/65">Total</span>
               <span className="text-xl font-bold">{formatPrice(orderTotal)}</span>

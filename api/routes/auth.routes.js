@@ -13,6 +13,7 @@ router.post('/cashier/register', authenticate, requireRole('admin'), registratio
 
 // Login
 router.post('/admin/login', loginLimiter, validate(schema.adminLogin), auth.adminLogin);
+router.post('/dev/login', loginLimiter, validate(schema.devLogin), auth.devLogin);
 router.post('/cashier/login', loginLimiter, validate(schema.cashierLogin), auth.cashierLogin);
 
 // Session

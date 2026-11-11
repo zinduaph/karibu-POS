@@ -11,17 +11,14 @@ const Hero = () => {
     <main id="home" className="overflow-hidden bg-[#FCF1D0]">
       <section className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:py-24">
         <div className="max-w-2xl">
-          <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#22396F]/15 bg-white/60 px-4 py-2 text-sm font-semibold text-[#22396F]">
-            
-          </p>
-
+          
           <h1 className="text-4xl font-bold leading-tight tracking-tight text-black sm:text-5xl lg:text-6xl">
             Spend less time managing sales.
             <span className="mt-2 block text-[#22396F]">More time growing your business.</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-8 text-black/70">
-            Karibu POS brings your checkout, stock, and sales insights together
+            Qick Sale brings your checkout, stock, and sales insights together
             in one straightforward system, so you can serve customers
             confidently and keep your day running smoothly.
           </p>

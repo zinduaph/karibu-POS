@@ -11,12 +11,21 @@ import asyncHandler from '../utils/asyncHandler.js';
 
 export const webhook = asyncHandler(async (req, res) => {
   const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!Buffer.isBuffer(req.rawBody)) {
+    console.error('[paystack webhook] Raw request body unavailable');
+    return res.status(400).json({ message: 'Invalid webhook payload' });
+  }
+  const signature = req.headers['x-paystack-signature'];
   const hash = crypto
     .createHmac('sha512', secret)
-    .update(JSON.stringify(req.body))
+    .update(req.rawBody)
     .digest('hex');
 
-  if (hash !== req.headers['x-paystack-signature']) {
+  if (
+    typeof signature !== 'string' ||
+    signature.length !== hash.length ||
+    !crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(signature))
+  ) {
     return res.status(401).json({ message: 'Invalid signature' });
   }
 

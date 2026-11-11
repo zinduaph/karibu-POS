@@ -51,7 +51,7 @@ export async function authenticate(req, res, next) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
       setReqUser(req, user);
-      if (onboardingBlocked(user, req.path)) {
+      if (onboardingBlocked(user, req.originalUrl.split('?')[0])) {
         const body = user.role === 'admin'
           ? { message: 'Onboarding required', code: 'ONBOARDING_REQUIRED' }
           : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
@@ -77,7 +77,7 @@ export async function authenticate(req, res, next) {
     if (!user) return res.status(401).json({ message: 'User not found or inactive' });
 
     setReqUser(req, user);
-    if (onboardingBlocked(user, req.path)) {
+    if (onboardingBlocked(user, req.originalUrl.split('?')[0])) {
       const body = user.role === 'admin'
         ? { message: 'Onboarding required', code: 'ONBOARDING_REQUIRED' }
         : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
@@ -94,6 +94,29 @@ export async function authenticate(req, res, next) {
     res.status(401).json({ message: 'Authentication error' });
   }
 }
+
+export function authenticateDeveloper(req, res, next) {
+  const secret = process.env.DEV_JWT_SECRET;
+  if (!secret) {
+    return res.status(503).json({ message: 'Developer authentication is not configured' });
+  }
+
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+  try {
+    const payload = jwt.verify(token, secret, { algorithms: ['HS256'] });
+    if (payload.role !== 'developer') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    req.user = { role: 'developer' };
+    return next();
+  } catch {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+}
+
 // What an EXPIRED restaurant may still do
 function allowedWhenExpired(req, role) {
   const path = req.originalUrl.split('?')[0];

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { adminRegister } from '../services/authApi'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const initialForm = {
   name: '',
@@ -43,8 +44,8 @@ const AdminRegistrationPage = () => {
   return (
     <main className="grid min-h-screen place-items-center bg-[#FCF1D0] px-4 py-10 text-black">
       <section className="w-full max-w-md rounded-3xl border border-[#22396F]/10 bg-white p-6 shadow-xl sm:p-8">
-        <Link to="/" className="text-sm font-semibold text-[#22396F] hover:underline">
-          Karibu POS
+        <Link aria-label="Qick Sale home" to="/" className="inline-flex">
+          <img alt="Qick Sale" className="h-20 w-20" src={qickSaleLogo} />
         </Link>
         <h1 className="mt-5 text-3xl font-bold tracking-tight">Create admin account</h1>
         <p className="mt-2 text-sm leading-6 text-black/60">

@@ -52,7 +52,7 @@ const Preview = () => {
             href="#demo"
             className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl bg-[#22396F] px-5 py-3 text-sm font-semibold text-[#FCF1D0] transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22396F]"
           >
-            See how Karibu POS works
+            See how Qick Sale works
             <span aria-hidden="true" className="ml-2">→</span>
           </a>
         </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { cashierLogin, adminLogin } from '../services/authApi'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const LoginPage = () => {
   const navigate = useNavigate()
@@ -57,29 +58,12 @@ const LoginPage = () => {
   return (
     <main className="grid min-h-screen place-items-center bg-[#FCF1D0] px-4 py-10 text-black">
       <section className="w-full max-w-md rounded-3xl border border-[#22396F]/10 bg-white p-6 shadow-xl sm:p-8">
-        <Link to="/" className="text-sm font-semibold text-[#22396F] hover:underline">
-          Karibu POS
+        <Link aria-label="Qick Sale home" to="/" className="inline-flex">
+          <img alt="Qick Sale" className="h-40 w-40" src={qickSaleLogo} />
         </Link>
         
         {/* Role Toggle */}
-        <div className="mb-4 role-toggle">
-          <button
-            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
-              form.role === 'cashier' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
-            }`}
-            onClick={() => setForm((f) => ({ ...f, role: 'cashier' }))}
-          >
-            Cashier
-          </button>
-          <button
-            className={`px-4 py-2 rounded-xl border border-[#22396F] ${
-              form.role === 'admin' ? 'bg-[#22396F] text-white' : 'text-[#22396F]'
-            }`}
-            onClick={() => setForm((f) => ({ ...f, role: 'admin' }))}
-          >
-            Admin
-          </button>
-        </div>
+        
 
         <h1 className="mt-5 text-3xl font-bold tracking-tight">
           {form.role === 'cashier' ? 'Cashier sign in' : 'Admin sign in'}

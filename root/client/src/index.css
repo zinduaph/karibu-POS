@@ -36,3 +36,67 @@ a {
   background: #dbe8d5;
   color: #203c2b;
 }
+
+.print-receipt {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 8mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-receipt,
+  .print-receipt * {
+    visibility: visible !important;
+  }
+
+  .print-receipt {
+    position: absolute;
+    inset: 0 auto auto 0;
+    display: block !important;
+    width: 76mm;
+    padding: 4mm;
+    color: #000;
+    background: #fff;
+    font: 10pt/1.4 Arial, sans-serif;
+  }
+
+  .print-receipt h1,
+  .print-receipt > p:first-of-type {
+    margin: 0 0 2mm;
+    text-align: center;
+  }
+
+  .print-receipt h1 {
+    font-size: 15pt;
+  }
+
+  .print-receipt .receipt-logo {
+    display: block;
+    width: 32mm;
+    height: auto;
+    margin: 0 auto 2mm;
+  }
+
+  .print-receipt hr {
+    margin: 3mm 0;
+    border: 0;
+    border-top: 1px dashed #555;
+  }
+
+  .print-receipt-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 4mm;
+    margin: 2mm 0;
+  }
+
+  .print-receipt-total {
+    font-weight: 700;
+  }
+}

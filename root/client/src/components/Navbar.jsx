@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const links = [
   { label: 'Home', href: '#home' },
@@ -19,15 +20,10 @@ const Navbar = () => {
         <a
           href="#home"
           className="flex items-center gap-3 rounded-lg text-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
-          aria-label="Karibu POS home"
+          aria-label="Qick Sale home"
           onClick={() => setMenuOpen(false)}
         >
-          <span className="grid size-10 place-items-center rounded-xl bg-[#22396F] text-lg font-bold text-[#FCF1D0]">
-            K
-          </span>
-          <span className="text-xl font-bold tracking-tight text-black">
-            Karibu <span className="text-[#22396F]">POS</span>
-          </span>
+          <img alt="Qick Sale" className="size-20 rounded-md shrink-0" src={qickSaleLogo} />
         </a>
 
         <div className="hidden items-center gap-9 md:flex">
@@ -40,24 +36,14 @@ const Navbar = () => {
               {label}
             </a>
           ))}
-          <a
-            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/register`}
-            className="rounded-xl bg-[#22396F] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22396F]"
-          >
-            Register admin
-          </a>
+          
           <Link
             to="/login"
             className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
           >
             Cashier sign in
           </Link>
-          <a
-            href={`${import.meta.env.VITE_ADMIN_APP_URL || 'http://localhost:5174'}/loginAdmin`}
-            className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
-          >
-            Admin sign in
-          </a>
+          
         </div>
 
         <button

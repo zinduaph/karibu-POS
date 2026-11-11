@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AuthApiError, authRequest, getStoredToken } from '../services/authApi'
+import { AuthApiError, authRequest } from '../services/authApi'
 import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }) {
@@ -11,9 +11,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true
-    const hasStoredToken = Boolean(getStoredToken())
 
-    if (!refreshRequest.current && hasStoredToken) {
+    if (!refreshRequest.current) {
       refreshRequest.current = authRequest('/refresh', { method: 'POST' })
         .finally(() => {
           refreshRequest.current = null

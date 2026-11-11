@@ -11,6 +11,7 @@ import {
   saveCachedSales,
 } from '../services/offlineOrders'
 import { useAuth } from '../context/useAuth'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const filters = [
   { label: 'All orders', value: 'all' },
@@ -59,6 +60,9 @@ const mapSaleToOrder = (sale) => ({
           },
         ],
   total: Number(sale.totalAmount),
+  subtotal: Number(sale.subtotalAmount ?? sale.totalAmount),
+  vatRate: Number(sale.vatRate ?? 0),
+  vatAmount: Number(sale.vatAmount ?? 0),
   paymentStatus: sale.paymentStatus,
   paymentMethod: sale.paymentMethod,
   amountReceived: sale.amountReceived,
@@ -79,6 +83,9 @@ const mapOfflineOrder = (order) => ({
     quantity: Number(item.quantity),
   })),
   total: Number(order.totalAmount),
+  subtotal: Number(order.subtotalAmount ?? order.totalAmount),
+  vatRate: Number(order.vatRate ?? 0),
+  vatAmount: Number(order.vatAmount ?? 0),
   paymentStatus: 'pending',
   paymentMethod: 'pending',
   isLocal: true,
@@ -131,6 +138,20 @@ const Orders = () => {
   const [paymentError, setPaymentError] = useState('')
   const [isPaying, setIsPaying] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [printOrder, setPrintOrder] = useState(null)
+
+  useEffect(() => {
+    if (!printOrder) return undefined
+
+    const handleAfterPrint = () => setPrintOrder(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+    const printTimer = window.setTimeout(() => window.print(), 0)
+
+    return () => {
+      window.clearTimeout(printTimer)
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
+  }, [printOrder])
 
   useEffect(() => {
     let active = true
@@ -455,6 +476,13 @@ const Orders = () => {
                         ? 'Payment failed'
                         : 'Pending'}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setPrintOrder(order)}
+                    className="min-h-9 rounded-lg border border-black/15 bg-white px-3 text-xs font-semibold hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+                  >
+                    Print receipt
+                  </button>
                 </div>
 
                 <div className="px-5 py-4">
@@ -484,12 +512,22 @@ const Orders = () => {
                   )}
 
                   <div className="mt-4 flex items-center justify-between border-t border-dashed border-black/15 pt-4">
-                    <span className="text-sm font-semibold text-black/65">
-                      Order total
-                    </span>
-                    <span className="text-lg font-bold">
-                      {formatPrice(order.total)}
-                    </span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-8 text-sm text-black/65">
+                        <span>Subtotal</span>
+                        <span>{formatPrice(order.subtotal)}</span>
+                      </div>
+                      {order.vatRate > 0 && (
+                        <div className="flex items-center justify-between gap-8 text-sm text-black/65">
+                          <span>VAT ({Math.round(order.vatRate * 100)}%)</span>
+                          <span>{formatPrice(order.vatAmount)}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-8 pt-1">
+                        <span className="text-sm font-semibold text-black/65">Order total</span>
+                        <span className="text-lg font-bold">{formatPrice(order.total)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {isPaid && order.paymentMethod === 'cash' && (
@@ -567,6 +605,47 @@ const Orders = () => {
               ? 'Orders created from the Sale page will appear here.'
               : 'Try another filter to see more orders.'}
           </p>
+        </section>
+      )}
+
+      {printOrder && (
+        <section className="print-receipt" aria-label="Printable order receipt">
+          <img alt="Qick Sale" className="receipt-logo" src={qickSaleLogo} />
+          <p>Order receipt</p>
+          <hr />
+          <p>Order: {getOrderId(printOrder)}</p>
+          <p>{formatDate(printOrder.createdAt)}</p>
+          <hr />
+          {printOrder.items.map((item, index) => (
+            <div className="print-receipt-line" key={`${item.id || item.name}-${index}`}>
+              <span>{item.name} × {item.quantity}</span>
+              <span>{formatPrice(item.price * item.quantity)}</span>
+            </div>
+          ))}
+          <hr />
+          {printOrder.vatRate > 0 && (
+            <>
+              <div className="print-receipt-line">
+                <span>Subtotal</span>
+                <span>{formatPrice(printOrder.subtotal)}</span>
+              </div>
+              <div className="print-receipt-line">
+                <span>VAT ({Math.round(printOrder.vatRate * 100)}%)</span>
+                <span>{formatPrice(printOrder.vatAmount)}</span>
+              </div>
+            </>
+          )}
+          <div className="print-receipt-line print-receipt-total">
+            <span>Total</span>
+            <span>{formatPrice(printOrder.total)}</span>
+          </div>
+          <p>Status: {printOrder.paymentStatus === 'completed' ? 'Paid' : 'Pending'}</p>
+          {printOrder.paymentMethod && printOrder.paymentMethod !== 'pending' && (
+            <p>Payment: {printOrder.paymentMethod.replaceAll('_', ' ')}</p>
+          )}
+          {printOrder.isLocal && <p>Offline order — not yet synced</p>}
+          <hr />
+          <p>Thank you!</p>
         </section>
       )}
 

@@ -24,8 +24,14 @@ export const addMenuItem = asyncHandler(async (req, res) => {
   const ingredientIds = [];
   const seen = new Set();
   for (const item of menuRecipe) {
-    if (!item || !item.ingredientId || seen.has(String(item.ingredientId))) {
-      return res.status(400).json({ message: 'Each recipe item needs a unique ingredientId' });
+    if (
+      !item ||
+      !item.ingredientId ||
+      !Number.isFinite(Number(item.quantity)) ||
+      Number(item.quantity) <= 0 ||
+      seen.has(String(item.ingredientId))
+    ) {
+      return res.status(400).json({ message: 'Each recipe item needs a unique ingredient and a positive quantity' });
     }
     seen.add(String(item.ingredientId));
     ingredientIds.push(item.ingredientId);

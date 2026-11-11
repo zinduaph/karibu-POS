@@ -1,5 +1,6 @@
 import { backendUrl } from '../config'
-import { getAccessToken } from './authToken'
+import { getAccessToken, setAccessToken } from './authToken'
+import { authenticatedFetch } from './authenticatedFetch'
 
 const AUTH_BASE_URL = `${backendUrl}/api/auth`
 
@@ -22,11 +23,10 @@ export async function authRequest(path, options = {}) {
 
   let response
   try {
-    response = await fetch(`${AUTH_BASE_URL}${path}`, {
-      ...requestOptions,
-      credentials: 'include',
-      headers,
-    })
+    const url = `${AUTH_BASE_URL}${path}`
+    response = includeAccessToken
+      ? await authenticatedFetch(url, { ...requestOptions, headers })
+      : await fetch(url, { ...requestOptions, credentials: 'include', headers })
   } catch (error) {
     throw new Error('Unable to reach the authentication server. Check your connection and API URL.', {
       cause: error,
@@ -60,6 +60,7 @@ export const getStoredToken = () => null // No longer stored in localStorage - u
 
 export const clearSession = () => {
   // No localStorage to clear - browser handles httpOnly cookie destruction via logout endpoint
+  setAccessToken('')
   window.localStorage.removeItem('user')
   window.localStorage.removeItem('restaurant')
 }
@@ -68,6 +69,7 @@ export const persistSession = (payload) => {
   // No longer persists to localStorage - auth state managed by httpOnly cookies
   // Browser automatically sends rt cookie with every same-origin request
   // Optionally store minimal user info in localStorage if needed for non-auth UI
+  if (payload?.accessToken) setAccessToken(payload.accessToken)
   if (payload?.user) {
     window.localStorage.setItem('user', JSON.stringify(payload.user))
   }
@@ -130,4 +132,3 @@ export const changeAdminPassword = async ({ currentPassword, newPassword }) => {
 export const markOnboardingComplete = async () => {
   return authRequest('/onboarding/complete', { method: 'POST' })
 }
-

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import User from '../models/cashier.js';
 import Restaurant from '../models/resturant.js';
 import RefreshToken from '../models/refreshToken.js';
@@ -38,6 +39,26 @@ async function startSession(user, res, additionalData = {}) {
   await issueRefresh(user, res, user.role);
   res.json({ accessToken: signAccess(user, user.role), user: publicUser(user), ...additionalData });
 }
+
+export const devLogin = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const devEmail = process.env.DEV_EMAIL;
+  const devPassword = process.env.DEV_PASSWORD;
+  const devSecret = process.env.DEV_JWT_SECRET;
+
+  if (!devEmail || !devPassword || !devSecret) {
+    return res.status(503).json({ message: 'Developer login is not configured' });
+  }
+  if (email !== devEmail || password !== devPassword) {
+    return res.status(401).json({ message: 'Invalid developer credentials' });
+  }
+
+  const token = jwt.sign({ role: 'developer' }, devSecret, {
+    algorithm: 'HS256',
+    expiresIn: '1d',
+  });
+  return res.json({ message: 'Developer login successful', token });
+});
 
 export const adminRegister = asyncHandler(async (req, res) => {
   const { name, email, password, restaurantName } = req.body;

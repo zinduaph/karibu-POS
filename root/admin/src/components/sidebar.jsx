@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const links = [
   { to: '/dashboard/home', label: 'Overview', icon: 'grid' },
@@ -58,11 +59,8 @@ function SideBar() {
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-[#547A95]/20 bg-white md:min-h-screen md:w-64 md:border-b-0 md:border-r">
       <div className="flex items-center gap-3 border-b border-[#547A95]/15 px-5 py-5">
-        <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#547A95] text-lg font-bold text-white">
-          K
-        </div>
+        <img alt="Qick Sale" className="h-16 w-16 shrink-0" src={qickSaleLogo} />
         <div>
-          <p className="font-bold tracking-tight text-[#2C3947]">Karibu POS</p>
           <p className="text-xs font-medium text-[#547A95]">Administration</p>
         </div>
       </div>
@@ -93,14 +91,14 @@ function SideBar() {
       <div className="mt-auto border-t border-[#547A95]/15 p-4">
         <div className="flex items-center gap-3 rounded-xl bg-[#547A95]/5 p-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#547A95]/15 text-sm font-bold text-[#547A95]">
-            {user?.name?.charAt(0)?.toUpperCase() || 'A'}
+            {user?.name?.charAt(0)?.toUpperCase() }
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-[#2C3947]">{user?.name || 'Administrator'}</p>
             <p className="text-xs text-[#547A95]">Admin account</p>
           </div>
           <button
-            className="shrink-0 text-xs font-semibold text-[#547A95] hover:text-[#2C3947] disabled:opacity-60"
+            className="shrink-0 text-xs font-semibold bg-black p-1 rounded-md text-white hover:text-gray-300 disabled:opacity-60"
             disabled={signingOut}
             onClick={handleSignOut}
             type="button"

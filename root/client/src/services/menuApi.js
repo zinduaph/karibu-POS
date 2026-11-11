@@ -1,5 +1,5 @@
 import { backendUrl } from '../config'
-import { getAccessToken } from './authToken'
+import { authenticatedFetch } from './authenticatedFetch'
 import { getCachedMenuItems, saveCachedMenuItems } from './offlineOrders'
 
 export async function getMenuItems(restaurantId) {
@@ -14,12 +14,10 @@ export async function getMenuItems(restaurantId) {
   }
 
   const headers = new Headers()
-  const token = getAccessToken()
-  if (token) headers.set('Authorization', `Bearer ${token}`)
 
   let response
   try {
-    response = await fetch(`${backendUrl}/api/menu-items`, { headers })
+    response = await authenticatedFetch(`${backendUrl}/api/menu-items`, { headers })
   } catch (cause) {
     const cachedItems = await getCachedMenuItems(restaurantId)
     if (cachedItems) return cachedItems

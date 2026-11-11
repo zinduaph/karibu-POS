@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { adminLogin } from '../services/authApi'
 import { clientAppUrl } from '../config'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const AdminLoginPage = () => {
   const navigate = useNavigate()
@@ -31,11 +32,9 @@ const AdminLoginPage = () => {
   return (
     <main className="grid min-h-screen place-items-center bg-[#F3F6F8] px-4 py-10 text-[#2C3947]">
       <section className="w-full max-w-md rounded-3xl border border-[#547A95]/15 bg-white p-6 shadow-xl sm:p-8">
-        <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#547A95] text-xl font-bold text-white">
-          K
-        </div>
-        <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-[#547A95]">
-          Karibu POS · Administration
+        <img alt="Qick Sale" className="h-30 w-30" src={qickSaleLogo} />
+        <p className="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-[#547A95]">
+          Administration
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Admin sign in</h1>
         <p className="mt-2 text-sm leading-6 text-slate-500">

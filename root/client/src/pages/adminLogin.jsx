@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { adminLogin } from '../services/authApi'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const AdminLoginPage = () => {
   const navigate = useNavigate()
@@ -40,8 +41,8 @@ const AdminLoginPage = () => {
   return (
     <main className="grid min-h-screen place-items-center bg-[#FCF1D0] px-4 py-10 text-black">
       <section className="w-full max-w-md rounded-3xl border border-[#22396F]/10 bg-white p-6 shadow-xl sm:p-8">
-        <Link to="/" className="text-sm font-semibold text-[#22396F] hover:underline">
-          Karibu POS
+        <Link aria-label="Qick Sale home" to="/" className="inline-flex">
+          <img alt="Qick Sale" className="h-20 w-20" src={qickSaleLogo} />
         </Link>
         <h1 className="mt-5 text-3xl font-bold tracking-tight">Admin sign in</h1>
         <p className="mt-2 text-sm leading-6 text-black/60">

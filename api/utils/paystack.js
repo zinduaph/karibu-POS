@@ -7,7 +7,7 @@ const headers = () => ({
 });
 
 export async function initializeTransaction({ email, amount, reference, callbackUrl, metadata }) {
-  const body = JSON.stringify({ email, amount, reference, callbackUrl, metadata });
+  const body = JSON.stringify({ email, amount, reference, callback_url: callbackUrl, metadata });
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
     method: 'POST',
     headers: headers(),
@@ -25,7 +25,7 @@ export async function initializeMobileMoneyTransaction({ email, amount, referenc
     email,
     amount,
     reference,
-    callbackUrl,
+    callback_url: callbackUrl,
     channel: 'mobile_money',
     phone,
     metadata: { ...metadata, phone },

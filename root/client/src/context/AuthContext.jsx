@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AuthContext } from './auth-context'
 import { authRequest } from '../services/authApi'
+import { refreshAccessToken } from '../services/authenticatedFetch'
 import { setAccessToken } from '../services/authToken'
 
 export function AuthProvider({ children }) {
@@ -12,7 +13,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
     if (!refreshRequest.current) {
-      refreshRequest.current = authRequest('/refresh', { method: 'POST' }).finally(() => {
+      refreshRequest.current = refreshAccessToken().finally(() => {
         refreshRequest.current = null
       })
     }

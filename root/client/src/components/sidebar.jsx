@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const SideBar = () => {
     const { logout } = useAuth()
@@ -16,6 +17,11 @@ const SideBar = () => {
     return (
       <>
       <div className="w-full md:w-[18%] min-h-screen md:mt-10 p-5 border-b-2 md:border-b-0 md:border-r-2 border-[#547A96]/20 bg-white">
+      <div className="mb-5 flex justify-center">
+        <NavLink aria-label="Qick Sale cashier home" to="/dashboard/home">
+          <img alt="Qick Sale" className="h-20 w-20" src={qickSaleLogo} />
+        </NavLink>
+      </div>
       <div className="flex flex-col gap-3 font-bold">
         {links.map((link) => (
           <NavLink

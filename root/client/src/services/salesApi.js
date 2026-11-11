@@ -1,21 +1,15 @@
 import { salesApiUrl } from '../config'
-import { getAccessToken } from './authToken'
+import { authenticatedFetch } from './authenticatedFetch'
 
 const API_BASE_URL = `${salesApiUrl}/api`
 
 const request = async (path, options = {}) => {
-  const token = getAccessToken()
   const headers = new Headers(options.headers)
   headers.set('Content-Type', 'application/json')
-  if (token) headers.set('Authorization', `Bearer ${token}`)
 
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      credentials: 'include',
-      headers,
-    })
+    response = await authenticatedFetch(`${API_BASE_URL}${path}`, { ...options, headers })
   } catch (cause) {
     const error = new Error(
       'Unable to reach the backend. Check your connection.',

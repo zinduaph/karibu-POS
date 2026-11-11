@@ -7,8 +7,8 @@ import { money } from './reports/format';
 const PHONE_REGEX = /^(07\d{8}|2547\d{8})$/;
 
 const PLANS = [
-  { code: 'starter', name: 'Starter', monthly: 1500, yearly: 15000, desc: 'Perfect for small restaurants getting started' },
-  { code: 'standard', name: 'Standard', monthly: 3000, yearly: 30000, desc: 'For growing businesses needing more features' },
+  { code: 'starter', name: 'Starter', monthly: 2315, yearly: 27780, desc: 'Perfect for small restaurants getting started' },
+  { code: 'standard', name: 'Standard', monthly: 3520, yearly: 42240, desc: 'For growing businesses needing more features' },
   { code: 'pro', name: 'Pro', monthly: 5000, yearly: 50000, desc: 'Full-featured for established restaurants' },
 ];
 
@@ -161,7 +161,7 @@ export default function PricingPage() {
     <div className="pricing">
       <header className="pricing-header">
         <h1>Subscription</h1>
-        <p className="muted">Manage your Karibu POS plan</p>
+        <p className="muted">Manage your Qick Sale plan</p>
       </header>
 
       <section className="current-plan card">
