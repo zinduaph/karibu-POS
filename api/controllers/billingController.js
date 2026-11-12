@@ -150,7 +150,7 @@ export const checkout = asyncHandler(async (req, res) => {
     email,
     amount: amount * 100, // Paystack uses kobo/cents
     reference,
-    callbackUrl: `${process.env.CLIENT_APP_URL || 'http://localhost:5174'}/billing/callback`,
+    callbackUrl: `${process.env.CLIENT_APP_URL || 'https://admin.qicksale.co.ke'}/billing/callback`,
     phone,
     metadata: { invoiceId: invoice._id, plan, period, restaurantId: restaurant._id },
   });
