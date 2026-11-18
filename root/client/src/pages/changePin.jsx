@@ -31,7 +31,7 @@ const CashierPinChangePage = () => {
         currentPin: form.currentPin,
         newPin: form.newPin,
       })
-      navigate('/onboarding', { replace: true })
+      navigate('/dashboard/home', { replace: true })
     } catch (changeError) {
       setError(changeError.message || 'Unable to change your PIN. Try again.')
     } finally {
@@ -42,10 +42,10 @@ const CashierPinChangePage = () => {
   return (
     <main className="grid min-h-screen place-items-center bg-[#FCF1D0] px-4 py-10 text-black">
       <section className="w-full max-w-md rounded-3xl border border-[#22396F]/10 bg-white p-6 shadow-xl sm:p-8">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#22396F]">First sign in</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight">Choose a new PIN</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#22396F]">Account security</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight">Change your PIN</h1>
         <p className="mt-2 text-sm leading-6 text-black/60">
-          Your administrator gave you a temporary PIN. Change it before using the POS.
+          You can continue using the PIN your administrator created, or change it here.
         </p>
 
         {error && (
@@ -56,7 +56,7 @@ const CashierPinChangePage = () => {
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           {[
-            ['currentPin', 'Temporary PIN', 'current-password'],
+            ['currentPin', 'Current PIN', 'current-password'],
             ['newPin', 'New PIN', 'new-password'],
             ['confirmPin', 'Confirm new PIN', 'new-password'],
           ].map(([name, label, autocomplete]) => (

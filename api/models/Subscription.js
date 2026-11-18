@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const subscriptionSchema = new mongoose.Schema(
   {
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true },
+    invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
     plan: { type: String, required: true },
     period: { type: String, enum: ['monthly', 'yearly'], required: true },
     status: { type: String, enum: ['active', 'past_due', 'canceled', 'expired'], default: 'active' },
@@ -16,6 +17,7 @@ const subscriptionSchema = new mongoose.Schema(
 );
 
 subscriptionSchema.index({ restaurantId: 1, status: 1 });
+subscriptionSchema.index({ invoiceId: 1 }, { unique: true, sparse: true, name: 'one_subscription_per_invoice' });
 subscriptionSchema.index({ currentPeriodEnd: 1 }, { expireAfterSeconds: 0 });
 
 export default mongoose.model('Subscription', subscriptionSchema);

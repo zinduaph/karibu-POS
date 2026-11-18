@@ -4,7 +4,7 @@ const ingredientSchema = new mongoose.Schema(
   {
     restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: 'Restaurant', required: true, index: true },
     name: { type: String, required: true, trim: true },
-    baseUnit: { type: String, enum: ['g', 'ml', 'piece'], required: true },
+    baseUnit: { type: String, enum: ['g', 'ml', 'piece','kg','L'], required: true },
     baseUnitQuantity: { type: Number, default: 0, min: 0 },
     lowStockThreshold: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },

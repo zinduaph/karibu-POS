@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Dashboard from './pages/dashboard'
 import DashboardHome from './pages/dashboardHome'
 import LoginPage from './pages/login'
+import PasswordRecovery from './pages/passwordRecovery'
 import SignUp from './components/signUp'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/useAuth'
@@ -9,7 +10,6 @@ import Ingredients from './pages/ingredients'
 import MenuItems from './pages/menuitems'
 import Orders from './pages/orders'
 import Pricing from './pages/pricing'
-import BillingCallback from './pages/billingCallback'
 import Reports from './pages/reports'
 import Sales from './pages/sales'
 import Settings from './pages/settings'
@@ -32,6 +32,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<LoginPage />} path="/login" />
+          <Route element={<PasswordRecovery />} path="/forgot-password" />
           <Route element={<SignUp />} path="/signup" />
           <Route
             element={
@@ -52,7 +53,6 @@ function App() {
             <Route element={<Pricing />} path="pricing" />
             <Route element={<Settings />} path="settings" />
           </Route>
-          <Route element={<BillingCallback />} path="/billing/callback" />
           <Route element={<Navigate replace to="/dashboard/home" />} path="*" />
         </Routes>
       </BrowserRouter>

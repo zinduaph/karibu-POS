@@ -12,7 +12,7 @@ default. Set the backend's `CORS_ORIGINS` environment variable to a
 comma-separated list of frontend origins when deploying from other domains.
 
 Cashiers sign in at `/login` with their restaurant code, username, and PIN.
-Their first sign-in requires changing the temporary PIN. Admins sign in at
+They use the PIN created for them by an admin. Admins sign in at
 `/login` in the admin app; the home page and admin registration page link to
 the appropriate sign-in page.
 

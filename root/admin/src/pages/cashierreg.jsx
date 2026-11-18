@@ -47,9 +47,9 @@ const CashierRegistrationPage = () => {
         <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
           <p className="font-semibold">Cashier account created.</p>
           <p className="mt-1">
-            Give <strong>{createdUsername}</strong> the initial PIN and restaurant code
+            Give <strong>{createdUsername}</strong> the PIN and restaurant code
             <strong> {restaurant?.code || 'shown at restaurant registration'}</strong>.
-            They will be prompted to change the PIN at first sign-in.
+            They can use this PIN to sign in.
           </p>
         </div>
       )}
@@ -89,7 +89,7 @@ const CashierRegistrationPage = () => {
           />
         </label>
         <label className="block text-sm font-semibold">
-          Initial PIN
+          Cashier PIN
           <input
             autoComplete="new-password"
             className="mt-2 min-h-11 w-full rounded-xl border border-[#547A95]/20 px-3 py-2 text-sm outline-none focus:border-[#547A95]"
@@ -103,7 +103,7 @@ const CashierRegistrationPage = () => {
             value={form.pin}
           />
           <span className="mt-1 block text-xs font-normal text-slate-500">
-            Avoid common PINs. The cashier will have to change this PIN at first sign-in.
+            Avoid common PINs and share the PIN securely with the cashier.
           </span>
         </label>
         <button

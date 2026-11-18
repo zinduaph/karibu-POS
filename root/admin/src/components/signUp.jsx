@@ -18,7 +18,7 @@ function SignUp() {
   const [submitting, setSubmitting] = useState(false)
 
   if (loading) return <AuthLayout title="Create your admin account">Checking your session…</AuthLayout>
-  if (user && !restaurantCode) return <Navigate replace to="/dashboard/home" />
+  if (user && !restaurantCode && !submitting) return <Navigate replace to="/dashboard/home" />
 
   function updateField(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
@@ -42,7 +42,6 @@ function SignUp() {
         password: form.password,
       })
       setRestaurantCode(result.restaurant?.code || '')
-      navigate('/onboarding', { replace: true })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -64,7 +63,7 @@ function SignUp() {
           </div>
           <button
             className="w-full rounded-xl bg-[#547A95] px-4 py-3 font-semibold text-white transition hover:bg-[#42657e] disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => navigate('/onboarding', { replace: true })}
+            onClick={() => navigate('/dashboard/home', { replace: true })}
             type="button"
           >
             Continue to dashboard

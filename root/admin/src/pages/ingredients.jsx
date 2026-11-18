@@ -1,12 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/useAuth'
-import { addIngredient, deleteIngredient, getIngredients } from '../services/inventoryApi'
+import { addIngredient, deleteIngredient, getIngredients, updateIngredient } from '../services/inventoryApi'
 
 const ingredientUnits = [
   { value: 'g', label: 'Grams (g)' },
   { value: 'ml', label: 'Millilitres (ml)' },
   { value: 'piece', label: 'Piece' },
+  { value: 'kg', label:'Kilograms (kg)'},
+  {value: 'L', label:'Liters (L)'}
 ]
+
+const unitGroups = { g: 'weight', kg: 'weight', ml: 'volume', L: 'volume', piece: 'count' }
+const unitFactors = { g: 1, kg: 1000, ml: 1, L: 1000, piece: 1 }
+
+function getUnitConversionFactor(fromUnit, toUnit) {
+  if (unitGroups[fromUnit] !== unitGroups[toUnit]) return null
+  return unitFactors[fromUnit] / unitFactors[toUnit]
+}
 
 function Ingredients() {
   const { accessToken } = useAuth()
@@ -21,7 +31,17 @@ function Ingredients() {
   const [submitError, setSubmitError] = useState('')
   const [deleteError, setDeleteError] = useState('')
   const [deletingIngredientId, setDeletingIngredientId] = useState('')
+  const [editingIngredient, setEditingIngredient] = useState(null)
+  const [editValues, setEditValues] = useState({
+    name: '',
+    baseUnit: 'g',
+    baseUnitQuantity: '0',
+    lowStockThreshold: '0',
+  })
+  const [updatingIngredient, setUpdatingIngredient] = useState(false)
+  const [editError, setEditError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [updateSuccessMessage, setUpdateSuccessMessage] = useState('')
 
   useEffect(() => {
     let active = true
@@ -95,6 +115,44 @@ function Ingredients() {
       setDeleteError(error.message)
     } finally {
       setDeletingIngredientId('')
+    }
+  }
+
+  function startEditingIngredient(ingredient) {
+    setEditingIngredient(ingredient)
+    setUpdateSuccessMessage('')
+    setEditValues({
+      name: ingredient.name,
+      baseUnit: ingredient.baseUnit,
+      baseUnitQuantity: String(ingredient.baseUnitQuantity),
+      lowStockThreshold: String(ingredient.lowStockThreshold),
+    })
+    setEditError('')
+  }
+
+  async function handleUpdateIngredient(event) {
+    event.preventDefault()
+    setEditError('')
+    setUpdatingIngredient(true)
+
+    try {
+      const result = await updateIngredient(accessToken, editingIngredient._id, {
+        name: editValues.name.trim(),
+        baseUnit: editValues.baseUnit,
+        baseUnitQuantity: Number(editValues.baseUnitQuantity),
+        lowStockThreshold: Number(editValues.lowStockThreshold),
+      })
+      setIngredients((current) => current.map((item) =>
+        item._id === result.ingredient._id
+          ? { ...item, ...result.ingredient }
+          : item,
+      ).sort((left, right) => left.name.localeCompare(right.name)))
+      setEditingIngredient(null)
+      setUpdateSuccessMessage(result.message || 'Ingredient updated successfully.')
+    } catch (error) {
+      setEditError(error.message)
+    } finally {
+      setUpdatingIngredient(false)
     }
   }
 
@@ -223,6 +281,90 @@ function Ingredients() {
         <div className="border-b border-[#547A95]/15 px-5 py-4 sm:px-6">
           <h2 className="font-bold text-[#2C3947]">Your ingredients</h2>
         </div>
+        {editingIngredient && (
+          <form className="grid gap-4 border-b border-[#547A95]/15 bg-[#547A95]/5 p-5 sm:grid-cols-2 lg:grid-cols-4" onSubmit={handleUpdateIngredient}>
+            <label className="text-sm font-medium text-[#2C3947]">
+              Ingredient name
+              <input
+                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 outline-none focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20"
+                maxLength={100}
+                onChange={(event) => setEditValues((values) => ({ ...values, name: event.target.value }))}
+                required
+                value={editValues.name}
+              />
+            </label>
+            <label className="text-sm font-medium text-[#2C3947]">
+              Base unit
+              <select
+                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 outline-none focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20"
+                onChange={(event) => {
+                  const nextUnit = event.target.value
+                  const factor = getUnitConversionFactor(editValues.baseUnit, nextUnit)
+                  setEditValues((values) => ({
+                    ...values,
+                    baseUnit: nextUnit,
+                    baseUnitQuantity: String(Number(values.baseUnitQuantity) * factor),
+                    lowStockThreshold: String(Number(values.lowStockThreshold) * factor),
+                  }))
+                }}
+                value={editValues.baseUnit}
+              >
+                {ingredientUnits.map((unit) => (
+                  <option
+                    disabled={getUnitConversionFactor(editValues.baseUnit, unit.value) === null}
+                    key={unit.value}
+                    value={unit.value}
+                  >
+                    {unit.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-[#2C3947]">
+              Current stock ({editValues.baseUnit})
+              <input
+                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 outline-none focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20"
+                min="0"
+                onChange={(event) => setEditValues((values) => ({ ...values, baseUnitQuantity: event.target.value }))}
+                required
+                step="any"
+                type="number"
+                value={editValues.baseUnitQuantity}
+              />
+            </label>
+            <label className="text-sm font-medium text-[#2C3947]">
+              Low-stock threshold ({editValues.baseUnit})
+              <input
+                className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 outline-none focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20"
+                min="0"
+                onChange={(event) => setEditValues((values) => ({ ...values, lowStockThreshold: event.target.value }))}
+                required
+                step="any"
+                type="number"
+                value={editValues.lowStockThreshold}
+              />
+            </label>
+            <div className="flex items-end gap-2">
+              <button
+                className="rounded-xl bg-[#547A95] px-4 py-3 font-semibold text-white transition hover:bg-[#42657e] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={updatingIngredient}
+                type="submit"
+              >
+                {updatingIngredient ? 'Saving…' : 'Save changes'}
+              </button>
+              <button
+                className="rounded-xl border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+                disabled={updatingIngredient}
+                onClick={() => setEditingIngredient(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+            {editError && <p className="text-sm text-red-700 sm:col-span-2 lg:col-span-4" role="alert">{editError}</p>}
+          </form>
+        )}
+        {updateSuccessMessage && <p className="px-5 pt-4 text-sm text-emerald-700" role="status">{updateSuccessMessage}</p>}
         {deleteError && <p className="px-6 pt-4 text-sm text-red-700" role="alert">{deleteError}</p>}
         {loadError ? (
           <p className="p-6 text-sm text-red-700" role="alert">{loadError}</p>
@@ -242,7 +384,7 @@ function Ingredients() {
                   <th className="px-5 py-3 font-semibold">Current stock</th>
                   <th className="px-5 py-3 font-semibold">Low-stock threshold</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Action</th>
+                  <th className="px-5 py-3 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#547A95]/10">
@@ -259,14 +401,23 @@ function Ingredients() {
                     </td>
                     <td className="px-5 py-4">
                       {ingredient.isActive && (
-                        <button
-                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={deletingIngredientId === ingredient._id}
-                          onClick={() => handleDeleteIngredient(ingredient)}
-                          type="button"
-                        >
-                          {deletingIngredientId === ingredient._id ? 'Deleting…' : 'Delete'}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            className="rounded-lg border border-[#547A95]/30 px-3 py-2 text-sm font-semibold text-[#547A95] transition hover:bg-[#547A95]/5"
+                            onClick={() => startEditingIngredient(ingredient)}
+                            type="button"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={deletingIngredientId === ingredient._id}
+                            onClick={() => handleDeleteIngredient(ingredient)}
+                            type="button"
+                          >
+                            {deletingIngredientId === ingredient._id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

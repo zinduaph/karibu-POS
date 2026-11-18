@@ -12,7 +12,6 @@ const userSchema = new mongoose.Schema(
 
     username: { type: String, lowercase: true, trim: true },    // cashier
     pinHash: { type: String, select: false },
-    mustChangePin: { type: Boolean, default: false },
     mustChangePassword: { type: Boolean, default: false },      // admin
     onboardingStep: { type: String, default: null },            // password | restaurant | inventory | cashiers | complete
     onboarded: { type: Boolean, default: false },

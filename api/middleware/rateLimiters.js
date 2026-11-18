@@ -9,6 +9,14 @@ export const loginLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
+export const passwordRecoveryLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: 'Too many password recovery attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export const registrationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,

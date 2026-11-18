@@ -67,6 +67,7 @@ function LoginPage() {
             value={password}
           />
         </label>
+        <Link className="-mt-2 inline-block text-sm text-[#547A95] underline hover:text-[#42657e]" to="/forgot-password">Forgot password?</Link>
         {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
         <button
           className="w-full rounded-xl bg-[#547A95] px-4 py-3 font-semibold text-white transition hover:bg-[#42657e] disabled:cursor-not-allowed disabled:opacity-60"

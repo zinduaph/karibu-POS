@@ -83,3 +83,40 @@ export async function getCashiers(accessToken) {
   }
   return result.cashiers
 }
+
+export async function deleteCashier(accessToken, cashierId) {
+  const result = await authRequest(`/delete-cashier/${encodeURIComponent(cashierId)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (typeof result?.message !== 'string') {
+    throw new Error('The authentication API returned an unexpected response after deleting the cashier.')
+  }
+  return result
+}
+
+export async function resetAdminPassword(accessToken, newpassword) {
+  const result = await authRequest('/reset-admin-password', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ newpassword }),
+  })
+  if (typeof result?.message !== 'string') {
+    throw new Error('The authentication API returned an unexpected response after resetting the password.')
+  }
+  return result
+}
+
+export async function requestAdminPasswordReset(email) {
+  return authRequest('/admin/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export async function completeAdminPasswordReset(email, code, newPassword) {
+  return authRequest('/admin/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, newPassword }),
+  })
+}

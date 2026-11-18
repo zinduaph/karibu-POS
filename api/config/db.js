@@ -11,6 +11,8 @@ export const connectedDB = async () => {
     throw new Error("MONGO_URI is not set");
   }
 
-  const conn = await mongoose.connect(`${process.env.MONGO_URI}/phone-pos`)
+  const conn = await mongoose.connect(process.env.MONGO_URI,{
+    dbName: "phone-pos"
+  })
   console.log("MongoDB connected:", conn.connection.host, "database:", conn.connection.name);
 };

@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/cashier.js';
 import Restaurant from '../models/resturant.js';
 import RefreshToken from '../models/refreshToken.js';
+import PasswordResetToken from '../models/passwordResetToken.js';
 import {
   checkPassword,
   checkPin,
@@ -12,6 +13,7 @@ import {
 } from '../utils/credentials.js';
 import { verifyWithLockout } from '../utils/lockout.js';
 import asyncHandler from '../utils/asyncHandler.js';
+import { sendAdminPasswordResetCode } from '../utils/email.js';
 import {
   clearRefreshCookie,
   issueRefresh,
@@ -28,7 +30,7 @@ const publicUser = (user) => ({
   restaurantId: user.restaurantId,
   onboarded: user.onboarded === true,
   onboardingStep: user.onboardingStep,
-  ...(user.role === 'admin' ? { mustChangePassword: user.mustChangePassword } : { mustChangePin: user.mustChangePin }),
+  ...(user.role === 'admin' ? { mustChangePassword: user.mustChangePassword } : {}),
 });
 
 const invalid = (res) => res.status(401).json({ message: 'Invalid credentials' });
@@ -126,7 +128,6 @@ export const cashierRegister = asyncHandler(async (req, res) => {
     username,
     role: 'cashier',
     pinHash: await hashPin(pin),
-    mustChangePin: true,
     isActive: true,
   });
 
@@ -137,7 +138,7 @@ export const cashierRegister = asyncHandler(async (req, res) => {
     restaurantId: user.restaurantId,
     username: user.username,
     restaurantCode: restaurant?.code,
-    message: 'Cashier account created successfully. Ask the cashier to change the PIN on first login.',
+    message: 'Cashier account created successfully. Share the PIN with the cashier securely.',
   });
 });
 
@@ -190,6 +191,148 @@ export const cashierLogin = asyncHandler(async (req, res) => {
     return invalid(res);
   }
   await startSession(user, res);
+});
+
+// Delete a cashier account belonging to the authenticated admin's restaurant.
+export const deleteCashier = asyncHandler(async (req, res) => {
+  const { cashierId } = req.params;
+  const adminRestaurantId = req.user.restaurantId;
+  if (!mongoose.isValidObjectId(cashierId)) {
+    return res.status(400).json({ message: 'Invalid cashierId' });
+  }
+
+  const cashier = await User.findOneAndDelete({
+    _id: cashierId,
+    restaurantId: adminRestaurantId,
+    role: 'cashier',
+  });
+  if (!cashier) return res.status(404).json({ message: 'Cashier not found' });
+
+  return res.status(200).json({ message: 'Cashier deleted successfully' });
+});
+
+// function for admin to reset his password
+ export const resetAdminPassword = asyncHandler(async (req,res) => {
+  const restaurantId = req.user.restaurantId;
+  const { newpassword} = req.body;
+  try {
+    const admin = await User.findOne({ restaurantId, role: 'admin'});
+    if(!admin){
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+    admin.passwordHash = await hashPassword(newpassword);
+    admin.mustChangePassword = false;
+    await admin.save();
+    res.status(200).json({ message: 'Password reset successfully' });
+
+  } catch (error) {
+    console.error('Error resetting admin password:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+})
+
+export const requestAdminPasswordReset = asyncHandler(async (req, res) => {
+  const response = {
+    message: 'If an active admin account exists for that email, a password reset code will be sent.',
+  };
+  const user = await User.findOne({
+    email: req.body.email,
+    role: 'admin',
+    isActive: true,
+  }).select('_id email');
+
+  if (!user) return res.status(200).json(response);
+
+  await PasswordResetToken.deleteMany({ userId: user._id });
+  const code = crypto.randomInt(100000, 1000000).toString();
+  const codeHash = crypto.createHmac('sha256', process.env.ACCESS_TOKEN)
+    .update(`${user._id}:${code}`)
+    .digest('hex');
+  await PasswordResetToken.create({
+    userId: user._id,
+    codeHash,
+    attemptsRemaining: 5,
+    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+  });
+
+  try {
+    await sendAdminPasswordResetCode(user.email, code);
+  } catch (error) {
+    await PasswordResetToken.deleteOne({ userId: user._id, codeHash });
+    console.error('Unable to send admin password reset email:', error);
+    return res.status(503).json({ message: 'Password recovery email could not be sent. Please try again later.' });
+  }
+
+  return res.status(200).json(response);
+});
+
+export const completeAdminPasswordReset = asyncHandler(async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  const user = await User.findOne({
+    email,
+    role: 'admin',
+    isActive: true,
+  }).select('_id');
+  if (!user) {
+    return res.status(400).json({ message: 'The code is invalid or expired. Request a new one.' });
+  }
+
+  const now = new Date();
+  const resetRecord = await PasswordResetToken.findOne({
+    userId: user._id,
+    expiresAt: { $gt: now },
+  });
+
+  if (!resetRecord) {
+    return res.status(400).json({ message: 'The code is invalid or expired. Request a new one.' });
+  }
+
+  const codeHash = crypto.createHmac('sha256', process.env.ACCESS_TOKEN)
+    .update(`${user._id}:${code}`)
+    .digest('hex');
+  const candidate = Buffer.from(codeHash, 'hex');
+  const stored = Buffer.from(resetRecord.codeHash, 'hex');
+  const isValidCode = candidate.length === stored.length && crypto.timingSafeEqual(candidate, stored);
+
+  if (!isValidCode) {
+    const updatedRecord = await PasswordResetToken.findOneAndUpdate(
+      { _id: resetRecord._id, attemptsRemaining: { $gt: 0 }, expiresAt: { $gt: now } },
+      { $inc: { attemptsRemaining: -1 } },
+      { new: true },
+    );
+    if (updatedRecord?.attemptsRemaining === 0) {
+      await PasswordResetToken.deleteOne({ _id: updatedRecord._id });
+    }
+    return res.status(400).json({ message: 'The code is invalid or expired. Request a new one.' });
+  }
+
+  const consumedRecord = await PasswordResetToken.findOneAndDelete({
+    _id: resetRecord._id,
+    codeHash,
+    attemptsRemaining: { $gt: 0 },
+    expiresAt: { $gt: now },
+  });
+  if (!consumedRecord) {
+    return res.status(400).json({ message: 'The code is invalid or expired. Request a new one.' });
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: user._id, role: 'admin', isActive: true },
+    { $set: { passwordHash, mustChangePassword: false }, $inc: { tokenVersion: 1 } },
+    { new: true },
+  ).select('_id');
+
+  if (!updatedUser) {
+    return res.status(400).json({ message: 'The code is invalid or expired. Request a new one.' });
+  }
+
+  await Promise.all([
+    PasswordResetToken.deleteMany({ userId: updatedUser._id }),
+    revokeAllForUser(updatedUser._id, 'User'),
+  ]);
+
+  return res.status(200).json({ message: 'Password reset successfully. You can now sign in with your new password.' });
 });
 
 export const refreshToken = asyncHandler(async (req, res) => {
@@ -248,7 +391,6 @@ export const changePin = asyncHandler(async (req, res) => {
   if (!(await verifyWithLockout(user, User, checkPin, currentPin))) return invalid(res);
 
   user.pinHash = await hashPin(newPin);
-  user.mustChangePin = false;
   user.tokenVersion += 1;
   await user.save();
   await revokeAllForUser(user._id, 'User');

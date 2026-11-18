@@ -12,6 +12,7 @@ import CashierLoginPage from './pages/login'
 import CashierPinChangePage from './pages/changePin'
 import ChangePasswordPage from './pages/changePassword'
 import OnboardingPage from './pages/onboarding'
+import HowItWorks from './pages/howItWorks'
 import { Toaster } from 'react-hot-toast'
 
 // Role protection is now handled by the backend (auth middleware).
@@ -36,17 +37,13 @@ function isAuthenticated() {
   return !!getUser()
 }
 
-function mustChangePin() {
-  const user = getUser()
-  return user && user.role === 'cashier' && user.mustChangePin === true
-}
-
 function App() {
   return (
     <>
       <Toaster />
       <Routes>
         <Route path='/' element={<Home />} />
+        <Route path='/how-it-works' element={<HowItWorks />} />
         <Route path='/login' element={<CashierLoginPage />} />
         <Route path='/admin/login' element={<AdminLoginPage />} />
         <Route path='/admin/register' element={<AdminRegistrationPage />} />
@@ -64,13 +61,7 @@ function App() {
         />
         <Route
           path='/dashboard'
-          element={
-            checkRole('cashier') && mustChangePin()
-              ? <Navigate to="/change-pin" replace />
-              : checkRole('cashier')
-                ? <Dashboard />
-                : <Navigate to="/login" replace />
-          }
+          element={checkRole('cashier') ? <Dashboard /> : <Navigate to="/login" replace />}
         >
           <Route index element={<DashboardHome />} />
           <Route path='home' element={<DashboardHome />} />

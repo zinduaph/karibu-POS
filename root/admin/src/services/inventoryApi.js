@@ -52,6 +52,21 @@ export async function addIngredient(accessToken, ingredients) {
   return result
 }
 
+export async function updateIngredient(accessToken, ingredientId, updates) {
+  const result = await inventoryRequest(
+    `/ingredients/${encodeURIComponent(ingredientId)}`,
+    accessToken,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    },
+  )
+  if (!result?.ingredient) {
+    throw new Error('The inventory API returned an unexpected response after updating the ingredient.')
+  }
+  return result
+}
+
 export async function deleteIngredient(accessToken, ingredientId) {
   const result = await inventoryRequest(
     `/delete-ingredient/${encodeURIComponent(ingredientId)}`,

@@ -17,24 +17,8 @@ function setReqUser(req, user) {
     role: user.role,
     restaurantId: user.restaurantId,
     name: user.name,
-    mustChangePin: user.mustChangePin === true,
     onboarded: user.onboarded === true,
   };
-}
-
-function isOnboardingExemptPath(path) {
-  return [
-    '/api/auth/change-pin',
-    '/api/auth/cashier/register',
-    '/api/auth/logout',
-    '/api/auth/refresh',
-    '/api/auth/me',
-  ].some((exempt) => path === exempt || path.startsWith(exempt + '/'));
-}
-
-function onboardingBlocked(user, path) {
-  const isBlocked = user.role === 'cashier' && user.mustChangePin === true;
-  return isBlocked && !isOnboardingExemptPath(path);
 }
 
 export async function authenticate(req, res, next) {
@@ -51,12 +35,6 @@ export async function authenticate(req, res, next) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
       setReqUser(req, user);
-      if (onboardingBlocked(user, req.originalUrl.split('?')[0])) {
-        const body = user.role === 'admin'
-          ? { message: 'Onboarding required', code: 'ONBOARDING_REQUIRED' }
-          : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
-        return res.status(403).json(body);
-      }
       // restaurant active + subscription check
       const restaurant = await Restaurant.findById(user.restaurantId).select('isActive accessUntil');
       if (!restaurant?.isActive) return res.status(401).json({ message: 'Unauthorized' }); // switched off: nothing works
@@ -77,12 +55,6 @@ export async function authenticate(req, res, next) {
     if (!user) return res.status(401).json({ message: 'User not found or inactive' });
 
     setReqUser(req, user);
-    if (onboardingBlocked(user, req.originalUrl.split('?')[0])) {
-      const body = user.role === 'admin'
-        ? { message: 'Onboarding required', code: 'ONBOARDING_REQUIRED' }
-        : { message: 'PIN change required', code: 'PIN_CHANGE_REQUIRED' };
-      return res.status(403).json(body);
-    }
     // restaurant active + subscription check
     const restaurant = await Restaurant.findById(user.restaurantId).select('isActive accessUntil');
     if (!restaurant?.isActive) return res.status(401).json({ message: 'Unauthorized' }); // switched off: nothing works

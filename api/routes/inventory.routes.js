@@ -8,6 +8,7 @@ const router = Router();
 router.post('/add-menu-items', authenticate, requireRole('admin'), menu.addMenuItem);
 router.post('/add-ingredients', authenticate, requireRole('admin'), inventory.addIngredient);
 router.get('/ingredients', authenticate, requireRole('admin'), inventory.getIngredients);
+router.patch('/ingredients/:ingredientId', authenticate, requireRole('admin'), inventory.updateIngredient);
 router.get('/', authenticate, inventory.getInventory);
 router.put('/', authenticate, requireRole('admin'), inventory.setInventory);
 router.delete('/delete-ingredient/:ingredientId', authenticate, requireRole('admin'), inventory.deleteIngredient);

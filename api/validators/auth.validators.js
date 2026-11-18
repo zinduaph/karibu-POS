@@ -42,3 +42,17 @@ export const changePin = z
 export const changePassword = z
   .object({ currentPassword: z.string().min(1).max(200), newPassword: z.string().min(12).max(200) })
   .refine((d) => d.currentPassword !== d.newPassword);
+
+export const resetAdminPassword = z.object({
+  newpassword: z.string().min(12).max(200),
+});
+
+export const requestAdminPasswordReset = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+});
+
+export const completeAdminPasswordReset = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  code: z.string().regex(/^\d{6}$/),
+  newPassword: z.string().min(12).max(200),
+});

@@ -1,6 +1,6 @@
-// Validates and replaces req.body with the parsed (trimmed, lowercased, typed) data
-export default (schema) => (req, res, next) => {
-  const result = schema.safeParse(req.body);
+// Validates and replaces the selected request value with the parsed data.
+export default (schema, source = 'body') => (req, res, next) => {
+  const result = schema.safeParse(req[source]);
   if (!result.success) {
     return res.status(400).json({
       message: 'Invalid input',
@@ -10,6 +10,6 @@ export default (schema) => (req, res, next) => {
       })),
     });
   }
-  req.body = result.data;
+  req[source] = result.data;
   next();
 };

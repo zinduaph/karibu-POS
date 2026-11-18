@@ -2,13 +2,33 @@ import Restaurant from '../models/resturant.js';
 import Invoice from '../models/invoice.js';
 import Subscription from '../models/Subscription.js';
 import BillingEvent from '../models/BillingEvent.js';
+import BillingPayment from '../models/billingPayment.js';
 import { addMonths } from '../utils/dates.js';
+import { reconcilePayheroPayment } from './payheroBilling.service.js';
 
 const GRACE_DAYS = 7;
 const REMINDER_DAYS = [7, 3, 1];
 
 export async function billingSweep() {
   const now = new Date();
+
+  const pendingPayments = await BillingPayment.find({
+    status: 'pending',
+    $or: [
+      { gatewayTxnId: { $exists: true, $ne: '' } },
+      { statusLookupReference: { $exists: true, $ne: '' } },
+    ],
+  })
+    .sort({ createdAt: 1 })
+    .limit(50)
+    .select('_id');
+  for (const payment of pendingPayments) {
+    try {
+      await reconcilePayheroPayment(payment._id);
+    } catch (error) {
+      console.error('PayHero payment reconciliation failed:', error.message);
+    }
+  }
 
   // Expire subscriptions whose accessUntil has passed
   const expired = await Restaurant.find({

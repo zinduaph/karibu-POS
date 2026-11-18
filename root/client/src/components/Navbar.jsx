@@ -6,6 +6,7 @@ const links = [
   { label: 'Home', href: '#home' },
   { label: 'Pricing', href: '#pricing' },
   { label: 'Demo', href: '#demo' },
+  { label: 'How it works', href: '/how-it-works' },
 ]
 
 const Navbar = () => {
@@ -18,7 +19,7 @@ const Navbar = () => {
         className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8"
       >
         <a
-          href="#home"
+          href="/#home"
           className="flex items-center gap-3 rounded-lg text-[#22396F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
           aria-label="Qick Sale home"
           onClick={() => setMenuOpen(false)}
@@ -27,10 +28,18 @@ const Navbar = () => {
         </a>
 
         <div className="hidden items-center gap-9 md:flex">
-          {links.map(({ label, href }) => (
+          {links.map(({ label, href }) => href.startsWith('/') ? (
+            <Link
+              key={label}
+              to={href}
+              className="text-sm font-medium text-black transition-colors hover:text-[#22396F] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
+            >
+              {label}
+            </Link>
+          ) : (
             <a
               key={label}
-              href={href}
+              href={`/${href}`}
               className="text-sm font-medium text-black transition-colors hover:text-[#22396F] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
             >
               {label}
@@ -69,10 +78,19 @@ const Navbar = () => {
           id="mobile-navigation"
           className={`${menuOpen ? 'grid' : 'hidden'} absolute inset-x-0 top-full gap-1 border-b border-[#22396F]/10 bg-[#FCF1D0] px-5 pb-4 pt-2 shadow-lg md:hidden`}
         >
-          {links.map(({ label, href }) => (
+          {links.map(({ label, href }) => href.startsWith('/') ? (
+            <Link
+              key={label}
+              to={href}
+              className="rounded-lg px-4 py-3 font-medium text-black transition-colors hover:bg-[#22396F]/10 hover:text-[#22396F] focus-visible:outline-2 focus-visible:outline-[#22396F]"
+              onClick={() => setMenuOpen(false)}
+            >
+              {label}
+            </Link>
+          ) : (
             <a
               key={label}
-              href={href}
+              href={`/${href}`}
               className="rounded-lg px-4 py-3 font-medium text-black transition-colors hover:bg-[#22396F]/10 hover:text-[#22396F] focus-visible:outline-2 focus-visible:outline-[#22396F]"
               onClick={() => setMenuOpen(false)}
             >

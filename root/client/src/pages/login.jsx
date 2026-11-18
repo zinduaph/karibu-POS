@@ -38,10 +38,7 @@ const LoginPage = () => {
         })
       }
       
-      // Redirect based on role and mustChangePin/mustChangePassword
-      if (response.user?.mustChangePin) {
-        navigate('/change-pin', { replace: true })
-      } else if (response.user?.mustChangePassword) {
+      if (response.user?.mustChangePassword) {
         navigate('/change-password', { replace: true })
       } else if (form.role === 'admin') {
         navigate('/admin/dashboard', { replace: true })

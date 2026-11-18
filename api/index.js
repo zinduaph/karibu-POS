@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './loadEnv.js';
 import express from "express";
 import { connectedDB } from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -26,7 +26,6 @@ if (missingEnvironment.length > 0) {
 
 const app = express();
 const PORT = process.env.PORT || 8000;
-const RAW = ['/api/payments/webhook', '/api/billing/webhook'];
 const allowedOrigins = new Set(
   (process.env.ADMIN_ORIGINS || process.env.ADMIN_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175')
     .split(',')
@@ -46,12 +45,7 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
-app.use(express.json({
-  limit: '20kb',
-  verify: (req, _res, buf) => {
-    if (RAW.some((path) => req.originalUrl.startsWith(path))) req.rawBody = buf;
-  },
-}));
+app.use(express.json({ limit: '20kb' }));
 app.use(cookieParser());
 app.use(monitorRequests);
 app.use('/api/billing', billingRoutes);

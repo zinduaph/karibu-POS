@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/useAuth'
-import { getCashiers, registerCashier } from '../services/authApi'
+import { deleteCashier, getCashiers, registerCashier } from '../services/authApi'
 
 function Staff() {
   const { accessToken } = useAuth()
@@ -12,6 +12,8 @@ function Staff() {
   const [loadingCashiers, setLoadingCashiers] = useState(true)
   const [cashierListVersion, setCashierListVersion] = useState(0)
   const [submitting, setSubmitting] = useState(false)
+  const [deletingCashierId, setDeletingCashierId] = useState('')
+  const [cashierDeleteError, setCashierDeleteError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -65,6 +67,21 @@ function Staff() {
     }
   }
 
+  async function handleDeleteCashier(cashier) {
+    if (!window.confirm(`Permanently delete ${cashier.name}'s cashier account? They will no longer be able to sign in.`)) return
+
+    setCashierDeleteError('')
+    setDeletingCashierId(cashier._id)
+    try {
+      await deleteCashier(accessToken, cashier._id)
+      setCashiers((current) => current.filter((item) => item._id !== cashier._id))
+    } catch (requestError) {
+      setCashierDeleteError(requestError.message)
+    } finally {
+      setDeletingCashierId('')
+    }
+  }
+
   return (
     <div className="space-y-6">
       <header>
@@ -76,7 +93,7 @@ function Staff() {
       <section className="max-w-2xl rounded-2xl border border-[#547A95]/15 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-lg font-semibold text-[#2C3947]">Create a cashier account</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Choose a username and a temporary six-digit PIN. The cashier will need to change the PIN after signing in.
+          Choose a username and a six-digit PIN. The cashier can use this PIN to sign in.
         </p>
 
         {createdCashier && (
@@ -85,9 +102,9 @@ function Staff() {
             <dl className="mt-3 grid gap-2 sm:grid-cols-2">
               <div><dt className="font-semibold">Restaurant code</dt><dd>{createdCashier.restaurantCode}</dd></div>
               <div><dt className="font-semibold">Username</dt><dd>{createdCashier.username}</dd></div>
-              <div><dt className="font-semibold">Temporary PIN</dt><dd>{createdCashier.initialPin}</dd></div>
+              <div><dt className="font-semibold">Cashier PIN</dt><dd>{createdCashier.initialPin}</dd></div>
             </dl>
-            <p className="mt-3">Share these sign-in details with the cashier securely. They must change the PIN after their first login.</p>
+            <p className="mt-3">Share these sign-in details with the cashier securely.</p>
             <button
               className="mt-3 font-semibold underline"
               onClick={() => setCreatedCashier(null)}
@@ -124,7 +141,7 @@ function Staff() {
             />
           </label>
           <label className="block text-sm font-medium text-[#2C3947]">
-            Temporary PIN
+            Cashier PIN
             <input
               autoComplete="new-password"
               className="mt-1.5 w-full rounded-xl border border-slate-300 px-3.5 py-3 outline-none transition focus:border-[#547A95] focus:ring-2 focus:ring-[#547A95]/20"
@@ -156,6 +173,7 @@ function Staff() {
           <h2 className="text-lg font-semibold text-[#2C3947]">Cashiers</h2>
           <p className="mt-1 text-sm text-slate-500">Cashier accounts belonging to your restaurant.</p>
         </div>
+        {cashierDeleteError && <p className="px-6 pt-4 text-sm text-red-700" role="alert">{cashierDeleteError}</p>}
         {cashierListError ? (
           <div className="p-6">
             <p className="text-sm text-red-700" role="alert">{cashierListError}</p>
@@ -173,12 +191,13 @@ function Staff() {
           <p className="p-6 text-sm text-slate-500">No cashier accounts have been created yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
+            <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="border-b border-[#547A95]/15 bg-[#547A95]/5 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-5 py-4 font-semibold">Name</th>
                   <th className="px-5 py-4 font-semibold">Username</th>
                   <th className="px-5 py-4 font-semibold">Last login</th>
+                  <th className="px-5 py-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#547A95]/10">
@@ -190,6 +209,16 @@ function Staff() {
                       {cashier.lastLoginAt
                         ? new Date(cashier.lastLoginAt).toLocaleString()
                         : 'Never signed in'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={Boolean(deletingCashierId)}
+                        onClick={() => handleDeleteCashier(cashier)}
+                        type="button"
+                      >
+                        {deletingCashierId === cashier._id ? 'Deleting…' : 'Delete'}
+                      </button>
                     </td>
                   </tr>
                 ))}

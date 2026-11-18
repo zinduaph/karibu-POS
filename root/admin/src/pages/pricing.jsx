@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { apiRoot } from '../config';
 import { money } from './reports/format';
@@ -38,11 +37,8 @@ export default function PricingPage() {
   const [checkoutError, setCheckoutError] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState(null);
   const [refetchKey, setRefetchKey] = useState(0);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [polling, setPolling] = useState(() =>
-    Boolean(searchParams.get('reference') && searchParams.get('payment') === 'success' && accessToken)
-  );
+  const [polling, setPolling] = useState(false);
+  const [paymentCheckAttempt, setPaymentCheckAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,44 +62,65 @@ export default function PricingPage() {
     return () => { cancelled = true; };
   }, [accessToken, refetchKey]);
 
+  const checkoutReference = checkoutSuccess?.reference;
+  const checkoutIsPaid = checkoutSuccess?.paid === true;
+
   useEffect(() => {
     let cancelled = false;
-    const reference = searchParams.get('reference');
-    const payment = searchParams.get('payment');
-    if (!reference || payment !== 'success' || !accessToken) return;
+    if (!checkoutReference || checkoutIsPaid || !accessToken) return undefined;
 
     const poll = async () => {
-      let attempts = 0;
-      const maxAttempts = 12;
-      while (attempts < maxAttempts && !cancelled) {
+      setPolling(true);
+      setCheckoutError('');
+      for (let attempt = 0; attempt < 40 && !cancelled; attempt++) {
         try {
-          const res = await fetch(`${apiRoot}/billing/invoices/${reference}/status`, {
+          const res = await fetch(`${apiRoot}/billing/invoices/${checkoutReference}/status`, {
             credentials: 'include',
             headers: { Authorization: `Bearer ${accessToken}` },
-          }).catch(() => null);
-          if (res?.ok) {
-            const data = await res.json();
-            if (data.status === 'paid') {
-              if (!cancelled) {
-                setPolling(false);
-                setRefetchKey((k) => k + 1);
-                navigate('/dashboard/pricing', { replace: true });
-              }
-              return;
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || 'Unable to verify payment status.');
+
+          if (data.status === 'paid') {
+            if (!cancelled) {
+              setCheckoutSuccess((current) => current?.reference === checkoutReference
+                ? { ...current, paid: true }
+                : current);
+              setRefetchKey((key) => key + 1);
+              setPolling(false);
             }
+            return;
           }
-        } catch (_err) {
-          if (!cancelled) setPolling(false);
-          typeof _err;
+
+          if (data.paymentStatus === 'failed' || data.paymentStatus === 'flagged' || data.status === 'voided') {
+            if (!cancelled) {
+              setCheckoutError(data.paymentStatus === 'flagged'
+                ? 'This payment needs support review. Please contact support before trying again.'
+                : 'The M-Pesa payment was not completed. You can start a new payment.');
+              setCheckoutSuccess(null);
+              setRefetchKey((key) => key + 1);
+              setPolling(false);
+            }
+            return;
+          }
+        } catch (requestError) {
+          if (!cancelled) {
+            setCheckoutError(requestError.message || 'Unable to verify payment status.');
+            setPolling(false);
+          }
+          return;
         }
-        attempts++;
-        await new Promise((r) => setTimeout(r, 3000));
+
+        await new Promise((resolve) => setTimeout(resolve, 3000));
       }
-      if (!cancelled) setPolling(false);
+      if (!cancelled) {
+        setPolling(false);
+        setCheckoutError('Payment is still pending. If you approved the prompt, check the status again shortly.');
+      }
     };
     poll();
     return () => { cancelled = true; };
-  }, [searchParams, accessToken, navigate]);
+  }, [checkoutReference, checkoutIsPaid, accessToken, paymentCheckAttempt]);
 
   const handleCheckout = async (e) => {
     e.preventDefault();
@@ -233,7 +250,7 @@ export default function PricingPage() {
       {!isActive && (
         <section className="checkout card">
           <h2>Complete payment</h2>
-          <p className="muted">Pay {money(amount)} via M-Pesa or card to activate your {plan.name} plan.</p>
+          <p className="muted">Pay {money(amount)} via an M-Pesa STK prompt to activate your {plan.name} plan.</p>
           <form onSubmit={handleCheckout} className="checkout-form">
             <div className="field">
               <label>Phone number</label>
@@ -259,7 +276,7 @@ export default function PricingPage() {
               className="pay-btn"
               disabled={checkoutLoading || !phone}
             >
-              {checkoutLoading ? 'Processing…' : 'Pay with M-Pesa / Card'}
+              {checkoutLoading ? 'Sending prompt…' : 'Pay with M-Pesa'}
             </button>
           </form>
         </section>
@@ -267,16 +284,16 @@ export default function PricingPage() {
 
       {checkoutSuccess && !checkoutSuccess.paid && (
         <div className="pay-redirect">
-          <p className="muted">Redirecting to Paystack to complete payment…</p>
-          <button
-            type="button"
-            className="redirect-btn"
-            onClick={() => {
-              window.location.href = checkoutSuccess.authorizationUrl;
-            }}
-          >
-            Open Paystack payment page
-          </button>
+          <p className="muted">
+            {polling
+              ? 'M-Pesa prompt sent. Approve it on your phone; payment status is being checked…'
+              : 'M-Pesa prompt sent. Approve it on your phone, then check the payment status.'}
+          </p>
+          {!polling && (
+            <button type="button" className="redirect-btn" onClick={() => setPaymentCheckAttempt((attempt) => attempt + 1)}>
+              Check payment status
+            </button>
+          )}
         </div>
       )}
       {checkoutSuccess && checkoutSuccess.paid && (

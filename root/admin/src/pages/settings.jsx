@@ -1,6 +1,7 @@
  import { useEffect, useState } from 'react'
- import { User, XCircle } from 'lucide-react'
+ import { User, X } from 'lucide-react'
  import { useAuth } from '../context/useAuth'
+ import { resetAdminPassword } from '../services/authApi'
  import { getHotelDetails, saveHotelDetails } from '../services/hotelApi'
 
  function Settings() {
@@ -16,6 +17,11 @@
    const [error, setError] = useState('')
    const [success, setSuccess] = useState('')
    const [passwordmodul, setPasswordModul] = useState(false)
+   const [newPassword, setNewPassword] = useState('')
+   const [confirmPassword, setConfirmPassword] = useState('')
+   const [passwordError, setPasswordError] = useState('')
+   const [passwordSuccess, setPasswordSuccess] = useState('')
+   const [savingPassword, setSavingPassword] = useState(false)
 
    useEffect(() => {
      let active = true
@@ -65,6 +71,36 @@
        setSaving(false)
      }
    }
+
+   function closePasswordModal() {
+     setPasswordModul(false)
+     setNewPassword('')
+     setConfirmPassword('')
+     setPasswordError('')
+     setPasswordSuccess('')
+   }
+
+   async function handlePasswordSubmit(event) {
+     event.preventDefault()
+     setPasswordError('')
+     setPasswordSuccess('')
+     if (newPassword !== confirmPassword) {
+       setPasswordError('The passwords do not match.')
+       return
+     }
+
+     setSavingPassword(true)
+     try {
+       const result = await resetAdminPassword(accessToken, newPassword)
+       setPasswordSuccess(result.message)
+       setNewPassword('')
+       setConfirmPassword('')
+     } catch (requestError) {
+       setPasswordError(requestError.message)
+     } finally {
+       setSavingPassword(false)
+     }
+   }
    
 
    return (
@@ -76,7 +112,7 @@
       </header>
 
       <section className="">
-       <div className='bg-white p-6 rounded-md flex justify-between'>
+       <div className='bg-white p-6 rounded-md  flex  md:justify-between'>
          <div className="">
             <h2 className="text-2xl font-semibold">Hotel details</h2>
             <form className="mt-6 flex flex-col" onSubmit={handleSubmit}>
@@ -91,7 +127,7 @@
 
                 <label htmlFor="hotel-email" className="mt-4 text-[#547A95] font-semibold">Hotel email</label>
                 <input id="hotel-email" name="hotelEmail" value={form.hotelEmail} onChange={updateField} type="email" placeholder="Optional" className="w-64 rounded-md border border-gray-700 p-2" disabled={loading} />
-                {error && <p className="mt-4 text-sm text-red-700" role="alert">{error}</p>}
+                
                 {success && <p className="mt-4 text-sm text-green-700" role="status">{success}</p>}
                 <button type="submit" disabled={loading || saving} className="mt-6 w-28 rounded-md bg-black p-2 text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50">
                   {loading ? 'Loading…' : saving ? 'Saving…' : 'Save'}
@@ -99,25 +135,16 @@
             </form>
          </div>
 
-         <div>
+         <div className='mt-4'>
             
             <h1 className='text-2xl font-semibold'>Admin profile</h1>
              <div className='m-auto mt-3 flex justify-center'><User size={38}/></div>
              <p className="mt-3 text-center font-medium text-[#2C3947]">{user?.name}</p>
              <p className="mt-1 text-center text-sm text-slate-500">{user?.email}</p>
-             <button onClick={() => setPasswordModul(true)} className='bg-black text-white p-2 rounded-md mt-3'>change Password</button>
+        
          </div>
 
-         {passwordmodul && (
-          <>
-          <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
-          <div>
-            <button onClick={() => setPasswordModul(false)}>< XCircle text-black size={27}/></button>
-          </div>
-
-          </div>
-          </>
-         )}
+         
 
          
 
