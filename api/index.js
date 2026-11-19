@@ -7,6 +7,7 @@ import salesRoutes from "./routes/sales.routes.js";
 import menuRoutes from "./routes/menu.routes.js";
 import inventoryRoutes from "./routes/inventory.routes.js";
 import reportsRoutes from "./routes/reportsRoutes.js";
+import hotelDetailsRoutes from "./routes/hotelDetails.routes.js";
 import billingRoutes from './routes/billingRoutes.js';
 import devRoutes, { monitorRequests } from './controllers/devcontroller.js';
 import { billingSweep } from './services/billing.service.js';
@@ -56,6 +57,7 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/menu-items", menuRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/products/hotel-details", hotelDetailsRoutes);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");

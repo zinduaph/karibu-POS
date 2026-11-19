@@ -6,6 +6,7 @@ const restaurantSchema = new mongoose.Schema(
     code: { type: String, required: true, unique: true, uppercase: true, trim: true },
     location: { type: String, trim: true },
     contactInfo: { type: String, trim: true },
+    hotelEmail: { type: String, trim: true, lowercase: true },
     logo: { type: String, trim: true },
     onboardingComplete: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },

@@ -60,7 +60,8 @@ const HowItWorks = () => {
             </p>
             <a
               className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-[#22396F] px-6 py-3 text-sm font-semibold text-[#FCF1D0] shadow-sm transition-colors hover:bg-[#192b55] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#22396F]"
-              href={`${adminAppUrl}/signup`}
+              href='https://admin.qicksale.co.ke'
+              target="_blank"
             >
               Create an admin account
             </a>

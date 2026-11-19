@@ -14,6 +14,7 @@ import ChangePasswordPage from './pages/changePassword'
 import OnboardingPage from './pages/onboarding'
 import HowItWorks from './pages/howItWorks'
 import { Toaster } from 'react-hot-toast'
+import Pricing from './pages/pricing'
 
 // Role protection is now handled by the backend (auth middleware).
 // These helper functions check localStorage for UX guidance only.
@@ -44,6 +45,7 @@ function App() {
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/how-it-works' element={<HowItWorks />} />
+        <Route path='pricing' element={<Pricing/>} />
         <Route path='/login' element={<CashierLoginPage />} />
         <Route path='/admin/login' element={<AdminLoginPage />} />
         <Route path='/admin/register' element={<AdminRegistrationPage />} />

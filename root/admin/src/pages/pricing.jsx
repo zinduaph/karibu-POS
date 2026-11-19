@@ -49,6 +49,7 @@ export default function PricingPage() {
           credentials: 'include',
           headers: { Authorization: `Bearer ${accessToken}` },
         });
+        
         if (!res.ok) throw new Error('Unable to load billing details.');
         const data = await res.json();
         if (!cancelled) setBilling(data);

@@ -4,8 +4,9 @@ import qickSaleLogo from '../assets/qick-sale-stacked.svg'
 
 const links = [
   { label: 'Home', href: '#home' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'Demo', href: '#demo' },
+  { label: 'Pricing', href: '/pricing' },
+  { label: 'Demo', href: '#contact' },
+
   { label: 'How it works', href: '/how-it-works' },
 ]
 
@@ -45,6 +46,10 @@ const Navbar = () => {
               {label}
             </a>
           ))}
+
+          <a href="https://admin.qicksale.co.ke" target="_blank" 
+          className="text-sm font-semibold text-[#22396F] transition-colors hover:text-[#192b55] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#22396F]"
+          rel="noopener noreferrer">Admin Account</a>
           
           <Link
             to="/login"

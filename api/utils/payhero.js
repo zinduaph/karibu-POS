@@ -87,6 +87,7 @@ async function payheroRequest(path, { method = 'GET', body } = {}) {
 
   if (!response.ok || (method === 'POST' && data?.success === false)) {
     const message = data?.error_message || data?.message;
+    console.error('PayHero error:', data);
     throw new PayHeroApiError(
       typeof message === 'string' ? message.slice(0, 200) : `PayHero request failed with status ${response.status}.`,
       method === 'POST' && response.status >= 500,
